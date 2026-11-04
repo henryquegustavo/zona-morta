@@ -1,0 +1,20 @@
+{
+  "name": "Zona Morta — Sobrevivência Zumbi",
+  "short_name": "Zona Morta",
+  "description": "Sobrevivência zumbi no celular e no PC, com salas para jogar com amigos.",
+  "id": "/",
+  "start_url": "/?app=1",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0e0a08",
+  "theme_color": "#0e0a08",
+  "lang": "pt-BR",
+  "categories": ["games"],
+  "icons": [
+    {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
