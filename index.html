@@ -25,6 +25,14 @@ canvas{display:block}
 #mpBox .mpB{padding:8px 16px;font-size:14px}#mpBox .mpOu{color:#8a8070;font-size:13px}#mpMsg{min-height:18px;font-size:13px;margin-top:6px}
 #netHud{position:fixed;left:50%;top:44px;transform:translateX(-50%);z-index:12;background:rgba(0,0,0,.55);padding:5px 12px;border-radius:6px;font-size:13px;text-align:center;display:none;pointer-events:none;color:#e8e0d0}
 #netHud small{color:#b8b0a0}
+body.tch #log{font-size:11.5px;max-width:34vw;max-height:30vh;overflow:hidden;bottom:auto;top:calc(50% - 10px)}
+body.tch #weap{display:none}
+@media (max-height:520px){body.tch #mini{transform:scale(.6);transform-origin:top right;top:8px;right:104px}body.tch #stats{transform:scale(.8);transform-origin:top left}body.tch #moods{transform:scale(.8);transform-origin:top left;top:192px}
+body.tch #tCam,body.tch #tFl,body.tch #tSw,body.tch #tMap{top:138px!important;right:auto!important;width:46px!important;height:46px!important;font-size:9px}
+body.tch #tCam{left:12px}body.tch #tFl{left:63px}body.tch #tSw{left:114px}body.tch #tMap{left:165px}
+body.tch #log{top:calc(50% + 16px)}}
+#netHud.mob{top:66px;font-size:11px;padding:3px 9px;white-space:nowrap}#netHud.mob small{display:none}#netHud.mob .btn.s{font-size:10px;padding:3px 7px}
+@media (max-height:520px){#start h1{font-size:38px;letter-spacing:4px}#start .sub{font-size:10px;letter-spacing:3px;margin:2px 0 0}#start #ctrls{display:none}#start .btn{margin-top:8px;padding:7px 18px;font-size:14px}#mpBox{margin-top:8px;padding:8px 14px}#mpBox .mpT{margin-bottom:4px;font-size:13px}#mpBox .mpR{margin:4px 0}#mpBox input{padding:5px 8px;font-size:14px}#mpBox .mpB{padding:6px 12px;font-size:13px;margin:0}}
 .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #hud{position:fixed;inset:0;pointer-events:none;z-index:10;display:none}
 #stats{position:absolute;left:12px;top:12px;width:190px;background:rgba(0,0,0,.45);padding:8px 10px;border-radius:5px;font-size:12px}
@@ -4542,17 +4550,18 @@ function mpJoin(codeArg){
 }
 function netHud(){
   let el = $('#netHud');
-  if (!el){ el = document.createElement('div'); el.id = 'netHud'; document.body.appendChild(el); }
+  if (!el){ el = document.createElement('div'); el.id = 'netHud'; if (isTouch) el.className = 'mob'; document.body.appendChild(el); }
   if (!NET.on || !NET.ready){ el.style.display = 'none'; return; }
   const ppl = [NET.name + ' (você)'].concat([...NET.peers.values()].map(p => p.name + (p.id === NET.hostId ? ' ★' : '') + (p.st && p.st.fl & 32 ? ' ☠' : '')));
   const dot = NET.conn === 'ok' ? '#5fe07a' : NET.conn === 'off' ? '#e0b05f' : '#e05f5f';
   el.style.display = 'block';
-  el.innerHTML = `<span style="color:${dot}">●</span> Sala <b>${NET.code}</b> · ${ppl.length} jogador${ppl.length > 1 ? 'es' : ''}${NET.role === 'host' ? ' · você é o anfitrião' : ''}${NET.conn !== 'ok' ? ' · <span style="color:#e0b05f">reconectando…</span>' : ''}<br><small>${ppl.map(x => x.replace(/</g, '&lt;')).join(' · ')}</small> <button class="btn s" id="netInv" style="pointer-events:auto;margin-left:6px">CONVIDAR</button>`;
+  el.innerHTML = `<span style="color:${dot}">●</span> Sala <b>${NET.code}</b> · ${ppl.length} jogador${ppl.length > 1 ? 'es' : ''}${NET.role === 'host' && !isTouch ? ' · você é o anfitrião' : NET.role === 'host' ? ' ★' : ''}${NET.conn !== 'ok' ? ' · <span style="color:#e0b05f">reconectando…</span>' : ''}<br><small>${ppl.map(x => x.replace(/</g, '&lt;')).join(' · ')}</small> <button class="btn s" id="netInv" style="pointer-events:auto;margin-left:6px">CONVIDAR</button>`;
   $('#netInv').onclick = e => { e.stopPropagation(); const u = location.origin + location.pathname + '?sala=' + NET.code;
     const done = () => { $('#netInv').textContent = 'LINK COPIADO!'; setTimeout(() => { const b = $('#netInv'); if (b) b.textContent = 'CONVIDAR'; }, 1800); };
     if (navigator.clipboard) navigator.clipboard.writeText(u).then(done, () => prompt('Copie o link:', u)); else prompt('Copie o link:', u); };
 }
 function mpSetup(){
+  if (isTouch) document.body.classList.add('tch');
   const n = (() => { try { return localStorage.getItem('zmNome'); } catch(e){ return null; } })() || QS.get('nome') || '';
   $('#mpName').value = QS.get('nome') || n; const sala = (QS.get('sala') || '').toUpperCase(); if (sala) $('#mpCode').value = sala;
   $('#mpCreate').onclick = mpCreate; $('#mpJoin').onclick = () => mpJoin();
