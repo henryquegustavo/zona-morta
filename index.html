@@ -25,12 +25,11 @@ canvas{display:block}
 #mpBox .mpB{padding:8px 16px;font-size:14px}#mpBox .mpOu{color:#8a8070;font-size:13px}#mpMsg{min-height:18px;font-size:13px;margin-top:6px}
 #netHud{position:fixed;left:50%;top:44px;transform:translateX(-50%);z-index:12;background:rgba(0,0,0,.55);padding:5px 12px;border-radius:6px;font-size:13px;text-align:center;display:none;pointer-events:none;color:#e8e0d0}
 #netHud small{color:#b8b0a0}
-body.tch #log{font-size:11.5px;max-width:34vw;max-height:30vh;overflow:hidden;bottom:auto;top:calc(50% - 10px)}
+body.tch #log{font-size:11.5px;max-width:44vw;max-height:3.3em;overflow:hidden;left:50%;transform:translateX(-50%);bottom:6px;top:auto;text-align:center;line-height:1.35}
+body.tch #log div{margin-top:0}
 body.tch #weap{display:none}
-@media (max-height:520px){body.tch #mini{transform:scale(.6);transform-origin:top right;top:8px;right:104px}body.tch #stats{transform:scale(.8);transform-origin:top left}body.tch #moods{transform:scale(.8);transform-origin:top left;top:192px}
-body.tch #tCam,body.tch #tFl,body.tch #tSw,body.tch #tMap{top:138px!important;right:auto!important;width:46px!important;height:46px!important;font-size:9px}
-body.tch #tCam{left:12px}body.tch #tFl{left:63px}body.tch #tSw{left:114px}body.tch #tMap{left:165px}
-body.tch #log{top:calc(50% + 16px)}}
+@media (max-height:520px){body.tch #mini{transform:scale(.6);transform-origin:top right;top:8px;right:104px}body.tch #stats{transform:scale(.8);transform-origin:top left}body.tch #moods{transform:scale(.75);transform-origin:top center;top:104px;left:50%;margin-left:0;translate:-50% 0;flex-direction:row;flex-wrap:wrap;justify-content:center}
+}
 #netHud.mob{top:66px;font-size:11px;padding:3px 9px;white-space:nowrap}#netHud.mob small{display:none}#netHud.mob .btn.s{font-size:10px;padding:3px 7px}
 @media (max-height:520px){#start h1{font-size:38px;letter-spacing:4px}#start .sub{font-size:10px;letter-spacing:3px;margin:2px 0 0}#start #ctrls{display:none}#start .btn{margin-top:8px;padding:7px 18px;font-size:14px}#mpBox{margin-top:8px;padding:8px 14px}#mpBox .mpT{margin-bottom:4px;font-size:13px}#mpBox .mpR{margin:4px 0}#mpBox input{padding:5px 8px;font-size:14px}#mpBox .mpB{padding:6px 12px;font-size:13px;margin:0}}
 .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -94,6 +93,13 @@ body.tch #log{top:calc(50% + 16px)}}
 #touch{display:none;position:fixed;inset:0;pointer-events:none;z-index:20}
 .tb{position:absolute;pointer-events:auto;width:62px;height:62px;border-radius:50%;background:rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.35);color:#fff;font-size:10.5px;font-weight:bold;display:flex;align-items:center;justify-content:center;text-align:center}
 .tb.on{background:rgba(200,50,40,.55)}
+#joyIdle{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:radial-gradient(circle,rgba(255,255,255,.18) 0 21%,rgba(0,0,0,.18) 22%);pointer-events:none;display:none}
+body.hudEd #touch{z-index:75;background:rgba(0,0,0,.35);pointer-events:auto}body.hudEd .tb,body.hudEd #joyIdle{pointer-events:auto;touch-action:none;cursor:grab}
+.tb.sel,#joyIdle.sel{outline:3px dashed #e3b55b;outline-offset:3px}
+#hudEd{display:none;position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:80;background:rgba(18,16,13,.96);border:1px solid #5a4f3e;border-radius:8px;padding:8px 12px;width:min(430px,70vw);font-size:12px;color:#f0e6d0;text-align:center}
+#hudEd .hT{font-weight:bold;letter-spacing:2px;color:#e3b55b}#hudEd .hS{color:#b8b0a0;margin:2px 0 4px}
+#hudEd .hR{display:flex;align-items:center;gap:8px;margin:3px 0}#hudEd .hR label{width:42%;text-align:left}#hudEd .hR input{flex:1}
+#hudEd .hB{display:flex;gap:6px;justify-content:center;margin-top:6px}
 #joyB{position:absolute;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,.3);display:none}
 #joyK{position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.35);display:none}
 @media (pointer:coarse){ #nav{top:66px} #hot{bottom:auto;top:12px} .sl{width:62px;height:46px;font-size:9.5px} #log{bottom:110px} }
@@ -115,7 +121,7 @@ body.tch #log{top:calc(50% + 16px)}}
     <div id="mpMsg"></div>
   </div>
 </div>
-<div id="pause" class="ov"><h2>PAUSADO</h2><div class="row"><button class="btn" id="bResume">CONTINUAR</button><button class="btn g" id="bGuide2">VER ARMAS</button><button class="btn g" id="bCfg2">CONFIGURAÇÕES</button></div></div>
+<div id="pause" class="ov"><h2>PAUSADO</h2><div class="row"><button class="btn" id="bResume">CONTINUAR</button><button class="btn g" id="bGuide2">VER ARMAS</button><button class="btn g" id="bCfg2">CONFIGURAÇÕES</button><button class="btn g" id="bHud2" style="display:none">CONTROLES</button></div></div>
 <div id="dead" class="ov"><h1>VOCÊ MORREU</h1><div class="box" id="deadTxt" style="margin-top:12px"></div><button class="btn" id="bRetry">TENTAR DE NOVO</button></div>
 
 <div id="hud">
@@ -144,11 +150,12 @@ body.tch #log{top:calc(50% + 16px)}}
 <div class="panel" id="lootP"><h3><span id="lootT">Contêiner</span><button class="btn s" id="lootX">Fechar</button></h3><div id="lootL"></div><div class="ft"><button class="btn s" id="lootAll">Pegar tudo</button></div></div>
 <div class="panel" id="invP"><h3><span>Mochila <small id="invC" style="color:#9a917c"></small></span><button class="btn s" id="invX">Fechar</button></h3><div id="invL"></div></div>
 <div class="panel" id="mapP" style="width:min(1000px,97vw)"><h3><span>Mapa <small style="color:#9a917c">(M)</small></span><span class="row" style="gap:6px"><button class="btn s g" id="mapUndo">Desfazer ponto</button><button class="btn s g" id="mapClr">Limpar rota</button><button class="btn s" id="mapX">Fechar</button></span></h3><div class="row" style="justify-content:flex-start;gap:5px;margin-bottom:6px"><button class="btn s g" id="mapZin">＋ Zoom</button><button class="btn s g" id="mapZout">－ Zoom</button><button class="btn s g" id="mapCenter">Centralizar em mim</button><button class="btn s g" id="mapAll">Ver tudo</button></div><canvas id="mapC" width="1000" height="620"></canvas><div class="m" style="font-size:12px;color:#c9c0a8;margin-top:6px">Arraste para mover · roda do mouse ou dois dedos para zoom · clique/toque rápido marca um ponto da rota.</div><div class="lg" id="mapLg"></div></div>
-<div class="panel" id="cfgP" style="width:min(620px,96vw)"><h3><span>Configurações</span><span class="row" style="gap:6px"><button class="btn s g" id="cfgReset">Restaurar padrão</button><button class="btn s" id="cfgX">Fechar</button></span></h3><div class="row" id="cfgTabs" style="justify-content:flex-start;gap:5px;margin-bottom:6px"></div><div id="cfgL"></div><div id="cfgPrevW" style="display:none;text-align:center;margin-top:8px"><div style="font-size:12px;color:#9a917c">Prévia</div><canvas id="cfgPrev" width="160" height="160" style="background:#4a5a3a;border-radius:6px"></canvas></div></div>
+<div class="panel" id="cfgP" style="width:min(620px,96vw)"><h3><span>Configurações</span><span class="row" style="gap:6px"><button class="btn s" id="cfgHud" style="display:none">🎮 Controles</button><button class="btn s g" id="cfgReset">Restaurar padrão</button><button class="btn s" id="cfgX">Fechar</button></span></h3><div class="row" id="cfgTabs" style="justify-content:flex-start;gap:5px;margin-bottom:6px"></div><div id="cfgL"></div><div id="cfgPrevW" style="display:none;text-align:center;margin-top:8px"><div style="font-size:12px;color:#9a917c">Prévia</div><canvas id="cfgPrev" width="160" height="160" style="background:#4a5a3a;border-radius:6px"></canvas></div></div>
 <div class="panel" id="guideP"><h3><span>Guia de armas</span><button class="btn s" id="guideX">Fechar</button></h3><div id="guideL"></div></div>
 
 <div id="touch">
   <div id="joyB"></div><div id="joyK"></div>
+  <div id="joyIdle"></div>
   <div class="tb" id="tAtk" style="right:24px;bottom:110px;width:84px;height:84px;font-size:13px">ATACAR</div>
   <div class="tb" id="tUse" style="right:120px;bottom:40px">USAR</div>
   <div class="tb" id="tRun" style="right:24px;bottom:20px">CORRER</div>
@@ -3335,15 +3342,15 @@ function interactLabel(it){
 
 // ================= TOQUE =================
 function setupTouch(){
-  $('#touch').style.display = 'block';
+  hudLoad(); layoutTouch(); addEventListener('resize', layoutTouch); addEventListener('orientationchange', () => setTimeout(layoutTouch, 300));
   const cv = renderer.domElement, jb = $('#joyB'), jk = $('#joyK');
   cv.addEventListener('touchstart', e => {
-    e.preventDefault();
+    e.preventDefault(); if (HUDED) return;
     for (const t of e.changedTouches){
       if (t.clientX < innerWidth * 0.45 && touch.joy === null){
         touch.joy = t.identifier; touch.jx = t.clientX; touch.jy = t.clientY;
-        jb.style.display = jk.style.display = 'block'; jb.style.left = (t.clientX - 55) + 'px'; jb.style.top = (t.clientY - 55) + 'px';
-        jk.style.left = (t.clientX - 23) + 'px'; jk.style.top = (t.clientY - 23) + 'px';
+        jb.style.display = jk.style.display = 'block'; $('#joyIdle').style.display = 'none'; const bw = jb.offsetWidth / 2, kw = jk.offsetWidth / 2; jb.style.left = (t.clientX - bw) + 'px'; jb.style.top = (t.clientY - bw) + 'px';
+        jk.style.left = (t.clientX - kw) + 'px'; jk.style.top = (t.clientY - kw) + 'px';
       } else if (touch.look === null){ touch.look = t.identifier; touch.lx = t.clientX; touch.ly = t.clientY; }
     }
   }, {passive:false});
@@ -3351,17 +3358,17 @@ function setupTouch(){
     e.preventDefault();
     for (const t of e.changedTouches){
       if (t.identifier === touch.joy){
-        let dx = t.clientX - touch.jx, dy = t.clientY - touch.jy; const l = Math.hypot(dx, dy); if (l > 50){ dx *= 50 / l; dy *= 50 / l; }
-        touch.mx = dx / 50; touch.mz = -dy / 50; jk.style.left = (touch.jx + dx - 23) + 'px'; jk.style.top = (touch.jy + dy - 23) + 'px';
+        let dx = t.clientX - touch.jx, dy = t.clientY - touch.jy; const l = Math.hypot(dx, dy); if (l > JR){ dx *= JR / l; dy *= JR / l; }
+        const kw = jk.offsetWidth / 2; touch.mx = dx / JR; touch.mz = -dy / JR; jk.style.left = (touch.jx + dx - kw) + 'px'; jk.style.top = (touch.jy + dy - kw) + 'px';
       } else if (t.identifier === touch.look){
         P.yaw -= (t.clientX - touch.lx) * 0.0055 * CFG.touchSens; P.pitch = clamp(P.pitch - (t.clientY - touch.ly) * 0.0055 * CFG.touchSens * (CFG.invertY ? -1 : 1), -1.4, 1.4);
         touch.lx = t.clientX; touch.ly = t.clientY;
       }
     }
   }, {passive:false});
-  const end = e => { for (const t of e.changedTouches){ if (t.identifier === touch.joy){ touch.joy = null; touch.mx = touch.mz = 0; jb.style.display = jk.style.display = 'none'; } if (t.identifier === touch.look) touch.look = null; } };
+  const end = e => { for (const t of e.changedTouches){ if (t.identifier === touch.joy){ touch.joy = null; touch.mx = touch.mz = 0; jb.style.display = jk.style.display = 'none'; if (running) $('#joyIdle').style.display = 'block'; } if (t.identifier === touch.look) touch.look = null; } };
   cv.addEventListener('touchend', end); cv.addEventListener('touchcancel', end);
-  const btn = (id, down, up) => { const el = $(id); el.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); down(el); }, {passive:false}); if (up) el.addEventListener('touchend', e => { e.preventDefault(); up(el); }); };
+  const btn = (id, down, up) => { const el = $(id); el.addEventListener('touchstart', e => { if (HUDED) return; e.preventDefault(); e.stopPropagation(); down(el); }, {passive:false}); if (up) el.addEventListener('touchend', e => { if (HUDED) return; e.preventDefault(); up(el); }); };
   btn('#tAtk', el => { touch.atk = true; el.classList.add('on'); }, el => { touch.atk = false; el.classList.remove('on'); });
   btn('#tRun', el => { touch.run = !touch.run; el.classList.toggle('on', touch.run); });
   btn('#tCr', el => { P.agach = !P.agach; el.classList.toggle('on', P.agach); });
@@ -3876,7 +3883,7 @@ function updateEnv(){
   const forest = inForest(P.x) ? 0.75 : 1;
   const col = new THREE.Color(0x060a12).lerp(new THREE.Color(forest < 1 ? 0x7f9488 : 0x98a9b3), s);
   col.multiplyScalar(1 - 0.3 * rainK);
-  scene.background = col; scene.fog.color = col; scene.fog.near = 1 + 9 * s; scene.fog.far = (20 + 60 * s) * forest * (1 - 0.35 * rainK) * CFG.viewDist;
+  scene.background = col; scene.fog.color = col; scene.fog.near = 1 + 9 * s; scene.fog.far = (20 + 60 * s) * forest * (1 - 0.35 * rainK) * CFG.viewDist * QF;
   const inB = insideBld(P.x, P.z, P.y) ? (0.62 + 0.25 * s) : 1;
   hemi.intensity = (0.13 + 0.5 * s) * (1 - 0.3 * rainK) * inB; sun.intensity = (0.04 + 0.75 * s) * (1 - 0.5 * rainK) * inB;
   hemi.color.setRGB(0.55 + 0.25 * s, 0.6 + 0.25 * s, 0.85);
@@ -4031,6 +4038,7 @@ function loop(){
   requestAnimationFrame(loop);
   let dt = Math.min(clock.getDelta(), 0.05);
   if (slowT > 0){ slowT -= dt; dt *= 0.35; }
+  autoQuality(dt);
   if (running && (!paused || NET.on) && !P.dead) update(dt);
   else if (NET.on && NET.ready && P && P.dead) netDeadTick(dt);
   renderer.render(scene, camera);
@@ -4073,6 +4081,7 @@ function newGame(seed){
   $('#log').innerHTML = '';
 }
 function start(){
+  if (isTouch){ $('#touch').style.display = 'block'; $('#joyIdle').style.display = 'block'; layoutTouch(); }
   audioInit(); startAmbience();
   $('#start').style.display = 'none'; $('#dead').style.display = 'none'; $('#hud').style.display = 'block';
   running = true; paused = false;
@@ -4136,6 +4145,110 @@ function init(){
   loop();
   mpSetup();
 }
+// ================= HUD DO CELULAR: padrão + personalizável =================
+// Cada controle: h = lado de referência ('l' esquerda | 'r' direita), v = ('t' topo | 'b' baixo),
+// x, y = distância do centro até essas bordas e s = diâmetro, tudo em "u" = menor lado da tela.
+const HUD_DEF = {o:0.85, b:{
+  joy:{h:'l', v:'b', x:0.25, y:0.27, s:0.40},
+  tJmp:{h:'l', v:'b', x:0.58, y:0.20, s:0.17},
+  tRun:{h:'l', v:'b', x:0.57, y:0.42, s:0.13},
+  tAtk:{h:'r', v:'b', x:0.17, y:0.24, s:0.26},
+  tAim:{h:'r', v:'b', x:0.42, y:0.13, s:0.17},
+  tCr:{h:'r', v:'b', x:0.44, y:0.36, s:0.15},
+  tRl:{h:'r', v:'b', x:0.15, y:0.50, s:0.14},
+  tShv:{h:'r', v:'b', x:0.62, y:0.26, s:0.14},
+  tUse:{h:'r', v:'b', x:0.62, y:0.50, s:0.15},
+  tInv:{h:'r', v:'t', x:0.10, y:0.36, s:0.13},
+  tCam:{h:'l', v:'t', x:0.075, y:0.44, s:0.13},
+  tFl:{h:'l', v:'t', x:0.22, y:0.44, s:0.13},
+  tSw:{h:'l', v:'t', x:0.365, y:0.44, s:0.13},
+  tMap:{h:'l', v:'t', x:0.51, y:0.44, s:0.13}
+}};
+const HUD_NAMES = {joy:'Analógico', tJmp:'Pular', tRun:'Correr', tAtk:'Atacar', tAim:'Mirar', tCr:'Agachar', tRl:'Recarregar', tShv:'Empurrar', tUse:'Usar', tInv:'Mochila', tCam:'Câmera', tFl:'Luz', tSw:'Trocar arma', tMap:'Mapa'};
+let HUDL = null, HUDED = false, hudSel = null, hudBackup = null, JR = 50;
+function hudLoad(){
+  const d = JSON.parse(JSON.stringify(HUD_DEF));
+  try { const s = JSON.parse(localStorage.getItem('zm_hud') || 'null'); if (s && s.b){ d.o = s.o || d.o; for (const k in d.b) if (s.b[k]) Object.assign(d.b[k], s.b[k]); } } catch(e){}
+  HUDL = d;
+}
+function hudSave(){ try { localStorage.setItem('zm_hud', JSON.stringify(HUDL)); } catch(e){} }
+const hudU = () => Math.min(innerWidth, innerHeight);
+function hudCenter(c){ const u = hudU(); return [c.h === 'r' ? innerWidth - c.x * u : c.x * u, c.v === 't' ? c.y * u : innerHeight - c.y * u]; }
+function layoutTouch(){
+  if (!HUDL) hudLoad();
+  const u = hudU();
+  for (const id in HUDL.b){
+    const c = HUDL.b[id], el = id === 'joy' ? $('#joyIdle') : $('#' + id); if (!el) continue;
+    const d = c.s * u, [cx, cy] = hudCenter(c);
+    Object.assign(el.style, {left:(cx - d / 2) + 'px', top:(cy - d / 2) + 'px', right:'auto', bottom:'auto', width:d + 'px', height:d + 'px', fontSize:Math.max(8, Math.min(15, d * 0.17)) + 'px', opacity:id === 'joy' ? HUDL.o * 0.6 : HUDL.o});
+    if (id === 'joy'){ JR = d * 0.36; const jb = $('#joyB'), jk = $('#joyK'); jb.style.width = jb.style.height = d + 'px'; jk.style.width = jk.style.height = d * 0.42 + 'px'; }
+  }
+}
+// ---------- editor ----------
+function hudEditOpen(){
+  if (!isTouch && !QS.get('hud')) return;
+  hudBackup = JSON.stringify(HUDL); HUDED = true; hudSel = null; touch.joy = null; touch.mx = touch.mz = 0; touch.atk = false;
+  hidePanels(); panel = 'hud'; $('#pause').style.display = 'none';
+  document.body.classList.add('hudEd'); $('#touch').style.display = 'block'; $('#joyIdle').style.display = 'block';
+  let ed = $('#hudEd');
+  if (!ed){
+    ed = document.createElement('div'); ed.id = 'hudEd';
+    ed.innerHTML = `<div class="hT">PERSONALIZAR CONTROLES</div><div class="hS" id="hudHint">Arraste os botões para onde quiser. Toque num botão para mudar o tamanho dele.</div>
+      <div class="hR"><label>Tamanho <b id="hudSelN">—</b></label><input type="range" id="hudSz" min="0.08" max="0.45" step="0.01" disabled></div>
+      <div class="hR"><label>Transparência</label><input type="range" id="hudOp" min="0.25" max="1" step="0.05"></div>
+      <div class="hB"><button class="btn s g" id="hudDef">PADRÃO</button><button class="btn s g" id="hudCancel">CANCELAR</button><button class="btn s" id="hudOk">SALVAR</button></div>`;
+    document.body.appendChild(ed);
+    $('#hudSz').oninput = e => { if (!hudSel) return; HUDL.b[hudSel].s = +e.target.value; layoutTouch(); };
+    $('#hudOp').oninput = e => { HUDL.o = +e.target.value; layoutTouch(); };
+    $('#hudDef').onclick = () => { HUDL = JSON.parse(JSON.stringify(HUD_DEF)); hudPick(null); layoutTouch(); $('#hudOp').value = HUDL.o; };
+    $('#hudCancel').onclick = () => { HUDL = JSON.parse(hudBackup); hudEditClose(); };
+    $('#hudOk').onclick = () => { hudSave(); hudEditClose(); };
+    for (const id in HUD_DEF.b){
+      const el = id === 'joy' ? $('#joyIdle') : $('#' + id); if (!el) continue;
+      el.addEventListener('pointerdown', e => {
+        if (!HUDED) return; e.preventDefault(); e.stopPropagation(); hudPick(id);
+        const [cx, cy] = hudCenter(HUDL.b[id]), ox = e.clientX - cx, oy = e.clientY - cy, pid = e.pointerId;
+        try { el.setPointerCapture(pid); } catch(_){}
+        const mv = ev => { if (ev.pointerId !== pid) return; hudMove(id, ev.clientX - ox, ev.clientY - oy); };
+        const up = ev => { if (ev.pointerId !== pid) return; el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+        el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+      });
+    }
+  }
+  $('#hudOp').value = HUDL.o; hudPick(null); ed.style.display = 'block'; layoutTouch();
+}
+function hudPick(id){
+  hudSel = id;
+  for (const k in HUD_DEF.b){ const el = k === 'joy' ? $('#joyIdle') : $('#' + k); if (el) el.classList.toggle('sel', k === id); }
+  $('#hudSelN').textContent = id ? HUD_NAMES[id] : '— toque num botão'; $('#hudSz').disabled = !id; if (id) $('#hudSz').value = HUDL.b[id].s;
+}
+function hudMove(id, cx, cy){
+  const u = hudU(), W = innerWidth, H = innerHeight, c = HUDL.b[id], r = c.s * u / 2;
+  cx = clamp(cx, r, W - r); cy = clamp(cy, r, H - r);
+  c.h = cx < W / 2 ? 'l' : 'r'; c.x = (c.h === 'l' ? cx : W - cx) / u;
+  c.v = cy < H / 2 ? 't' : 'b'; c.y = (c.v === 't' ? cy : H - cy) / u;
+  layoutTouch();
+}
+function hudEditClose(){
+  HUDED = false; panel = null; document.body.classList.remove('hudEd'); $('#hudEd').style.display = 'none'; hudPick(null); layoutTouch();
+  if (!running){ $('#touch').style.display = isTouch ? 'block' : 'none'; }
+  else if (!NET.on){ paused = false; }
+}
+// ---------- qualidade automática no celular: se ficar lento, diminui resolução e distância ----------
+let QF = 1, AQ = {lv:0, t:0, n:0, acc:0, good:0};
+function autoQuality(dt){
+  if (!isTouch || CFG.quality !== 'auto' || !running) return;
+  AQ.acc += dt; AQ.n++;
+  if (AQ.acc < 4) return;
+  const fps = AQ.n / AQ.acc; AQ.acc = 0; AQ.n = 0;
+  if (fps < 27 && AQ.lv < 3){ AQ.lv++; AQ.good = 0; }
+  else if (fps > 52){ if (++AQ.good >= 3 && AQ.lv > 0){ AQ.lv--; AQ.good = 0; } else return; }
+  else return;
+  const pr = [1, 0.85, 0.72, 0.6][AQ.lv]; QF = [0.85, 0.78, 0.7, 0.62][AQ.lv];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, pr)); renderer.setSize(innerWidth, innerHeight);
+}
+if (isTouch) QF = 0.85;
+
 // ================= MULTIJOGADOR (sala com amigos) =================
 // Quem cria a sala é o ANFITRIÃO: a cidade sai da mesma semente para todos, e os zumbis rodam só no anfitrião.
 // Os outros veem cópias dos zumbis e mandam ao anfitrião os tiros/golpes que deram; o anfitrião aplica e devolve o resultado.
@@ -4562,6 +4675,7 @@ function netHud(){
 }
 function mpSetup(){
   if (isTouch) document.body.classList.add('tch');
+  if (isTouch || QS.get('hud')){ for (const id of ['#cfgHud', '#bHud2']){ const b = $(id); b.style.display = ''; b.onclick = e => { e.stopPropagation(); hudEditOpen(); }; } }
   const n = (() => { try { return localStorage.getItem('zmNome'); } catch(e){ return null; } })() || QS.get('nome') || '';
   $('#mpName').value = QS.get('nome') || n; const sala = (QS.get('sala') || '').toUpperCase(); if (sala) $('#mpCode').value = sala;
   $('#mpCreate').onclick = mpCreate; $('#mpJoin').onclick = () => mpJoin();
