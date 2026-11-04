@@ -131,8 +131,8 @@ body.hudEd #touch{z-index:75;background:rgba(0,0,0,.35);pointer-events:auto}body
     <div id="mpMsg"></div>
   </div>
 </div>
-<div id="pause" class="ov"><h2>PAUSADO</h2><div class="row"><button class="btn" id="bResume">CONTINUAR</button><button class="btn g" id="bGuide2">VER ARMAS</button><button class="btn g" id="bCfg2">CONFIGURAÇÕES</button><button class="btn g" id="bHud2" style="display:none">CONTROLES</button></div></div>
-<div id="dead" class="ov"><h1>VOCÊ MORREU</h1><div class="box" id="deadTxt" style="margin-top:12px"></div><button class="btn" id="bRetry">TENTAR DE NOVO</button></div>
+<div id="pause" class="ov"><h2>PAUSADO</h2><div class="row"><button class="btn" id="bResume">CONTINUAR</button><button class="btn g" id="bGuide2">VER ARMAS</button><button class="btn g" id="bCfg2">CONFIGURAÇÕES</button><button class="btn g" id="bHud2" style="display:none">CONTROLES</button><button class="btn g" id="bMenu2">SAIR PARA O MENU</button></div></div>
+<div id="dead" class="ov"><h1>VOCÊ MORREU</h1><div class="box" id="deadTxt" style="margin-top:12px"></div><div class="row"><button class="btn" id="bRetry">TENTAR DE NOVO</button><button class="btn g" id="bMenu3">MENU</button></div></div>
 
 <div id="hud">
   <div id="stats">
@@ -160,7 +160,7 @@ body.hudEd #touch{z-index:75;background:rgba(0,0,0,.35);pointer-events:auto}body
 <div class="panel" id="lootP"><h3><span id="lootT">Contêiner</span><button class="btn s" id="lootX">Fechar</button></h3><div id="lootL"></div><div class="ft"><button class="btn s" id="lootAll">Pegar tudo</button></div></div>
 <div class="panel" id="invP"><h3><span>Mochila <small id="invC" style="color:#9a917c"></small></span><button class="btn s" id="invX">Fechar</button></h3><div id="invL"></div></div>
 <div class="panel" id="mapP" style="width:min(1000px,97vw)"><h3><span>Mapa <small style="color:#9a917c">(M)</small></span><span class="row" style="gap:6px"><button class="btn s g" id="mapUndo">Desfazer ponto</button><button class="btn s g" id="mapClr">Limpar rota</button><button class="btn s" id="mapX">Fechar</button></span></h3><div class="row" style="justify-content:flex-start;gap:5px;margin-bottom:6px"><button class="btn s g" id="mapZin">＋ Zoom</button><button class="btn s g" id="mapZout">－ Zoom</button><button class="btn s g" id="mapCenter">Centralizar em mim</button><button class="btn s g" id="mapAll">Ver tudo</button></div><canvas id="mapC" width="1000" height="620"></canvas><div class="m" style="font-size:12px;color:#c9c0a8;margin-top:6px">Arraste para mover · roda do mouse ou dois dedos para zoom · clique/toque rápido marca um ponto da rota.</div><div class="lg" id="mapLg"></div></div>
-<div class="panel" id="cfgP" style="width:min(620px,96vw)"><h3><span>Configurações</span><span class="row" style="gap:6px"><button class="btn s" id="cfgHud" style="display:none">🎮 Controles</button><button class="btn s g" id="cfgReset">Restaurar padrão</button><button class="btn s" id="cfgX">Fechar</button></span></h3><div class="row" id="cfgTabs" style="justify-content:flex-start;gap:5px;margin-bottom:6px"></div><div id="cfgL"></div><div id="cfgPrevW" style="display:none;text-align:center;margin-top:8px"><div style="font-size:12px;color:#9a917c">Prévia</div><canvas id="cfgPrev" width="160" height="160" style="background:#4a5a3a;border-radius:6px"></canvas></div></div>
+<div class="panel" id="cfgP" style="width:min(620px,96vw)"><h3><span>Configurações</span><span class="row" style="gap:6px"><button class="btn s" id="cfgHud" style="display:none">🎮 Controles</button><button class="btn s g" id="cfgMenu" style="display:none">🏠 Menu</button><button class="btn s g" id="cfgReset">Restaurar padrão</button><button class="btn s" id="cfgX">Fechar</button></span></h3><div class="row" id="cfgTabs" style="justify-content:flex-start;gap:5px;margin-bottom:6px"></div><div id="cfgL"></div><div id="cfgPrevW" style="display:none;text-align:center;margin-top:8px"><div style="font-size:12px;color:#9a917c">Prévia</div><canvas id="cfgPrev" width="160" height="160" style="background:#4a5a3a;border-radius:6px"></canvas></div></div>
 <div class="panel" id="guideP"><h3><span>Guia de armas</span><button class="btn s" id="guideX">Fechar</button></h3><div id="guideL"></div></div>
 
 <div id="rotMsg"><div style="font-size:54px">📱↻</div><div style="font-weight:bold;letter-spacing:2px;margin-top:10px">VIRE O CELULAR</div><div style="color:#b8b0a0;font-size:13px;margin-top:6px">O Zona Morta é jogado com o celular deitado.</div></div>
@@ -3140,6 +3140,7 @@ function openGuide(from){
 
 // ================= TELA DE CONFIGURAÇÕES =================
 function openCfg(from){
+  { const b = $('#cfgMenu'); if (b) b.style.display = from === 'start' ? 'none' : ''; }
   prevPanel = from; if (from === 'pause') $('#pause').style.display = 'none';
   if (from === 'game') unlock();
   hidePanels(); panel = 'cfg'; $('#cfgP').style.display = 'block'; renderCfg();
@@ -4122,7 +4123,7 @@ function init(){
     ? '<b>Analógico (esquerda)</b> andar · <b>Arrastar (direita)</b> olhar<br><b>ATACAR</b> · <b>USAR</b> revistar / arrombar / finalizar zumbi caído · <b>EMPURRAR</b> (em porta = chute) · <b>MIRAR</b> · <b>CÂMERA</b> · <b>MAPA</b> · <b>PULAR</b> (segure para pular mais alto; escala carros e casas) · <b>CORRER</b> · <b>AGACHAR</b> · <b>MOCHILA</b> · <b>RECAR.</b> recarregar · <b>LUZ</b> · <b>ARMA</b> trocar · toque nos quadros de arma no topo para equipar'
     : '<b>WASD</b> andar · <b>Mouse</b> olhar · <b>Clique</b> atacar/atirar<br><b>Botão direito</b> mirar · <b>V</b> 1ª/3ª pessoa · <b>M</b> mapa e rota<br><b>O</b> ou ⚙ configurações · <b>G</b> empurrar (derruba zumbis; ataque no chão = pisão; em porta ou janela = chute) · <b>Espaço</b> pular (segure para pular mais alto e longe) / escalar (de frente para carro, muro ou casa) · <b>Shift</b> correr · <b>C</b> agachar · <b>E</b> revistar / arrombar fechadura / finalizar zumbi caído · <b>I</b> ou <b>Tab</b> mochila<br><b>1–5</b> ou <b>rodinha</b> trocar arma · <b>R</b> recarregar · <b>F</b> lanterna · <b>Esc</b> pausar')
     + '<br><br>A cidade tem <b>morros</b>, ruas com <b>curvas, subidas e descidas</b>, casas com muro e garagem, <b>sobrados</b>, <b>mansões</b> com piscina no morro, <b>condomínios fechados</b>, <b>sítios</b> na periferia, <b>edifícios com escada</b> até o terraço, <b>shopping</b>, um <b>parque</b> no centro, praças, postos, igrejas, <b>mercado</b>, <b>farmácia</b>, <b>delegacia</b>, <b>loja de armas</b> e <b>ferragens</b>. Ao sul fica a <b>zona rural</b>, com fazendas espalhadas e <b>lavouras</b> de milho, cana, soja, trigo e café. Os zumbis enxergam pouco: só te notam <b>de frente e de perto</b>, demoram um instante para perceber e quase não te veem <b>agachado</b>. Os <b>corredores</b> dão um arranque e cansam: correndo, você escapa. Se você se esconder, os zumbis vão te esquecendo. Dos dois lados da cidade (leste e oeste) há <b>florestas</b> com cabanas de caça. Dá pra <b>escalar carros, muros e telhados</b> — os zumbis não sobem. <b>Portas</b> podem estar <b>trancadas</b> (arrombe com <b>E</b>; pé de cabra é o melhor) e <b>janelas</b> podem ser quebradas e puladas. Feche as portas atrás de você — os zumbis batem até arrombar. Você começa com uma <b>espingarda</b> na mão, uma <b>pistola</b> e um <b>taco</b>. Os zumbis te perseguem por muito tempo, alguns <b>correm</b>, e <b>hordas</b> vagam pela cidade — toda noite, às 21h, uma horda vem atrás de você. Mordidas e arranhões podem <b>infeccionar</b>: <b>antibiótico</b> (farmácia) cura e <b>antitérmico</b> segura a febre. Bem alimentado e sem sangrar, a vida volta aos poucos. Dá pra <b>dirigir carros</b> (E perto do carro) — de olho na <b>gasolina</b> e na <b>lataria</b>. Na zona rural há <b>fazendas</b> com celeiro, e dá pra <b>caçar</b> veados, javalis e coelhos (cozinhe a carne no fogão).';
-  $('#bStart').onclick = start;
+  $('#bStart').onclick = () => { if (NEWGAME){ NEWGAME = false; newGame(); } start(); };
   $('#bGuide').onclick = () => openGuide('start');
   $('#bGuide2').onclick = () => openGuide('pause');
   $('#bCfg').onclick = () => openCfg('start'); $('#bCfg2').onclick = () => openCfg('pause');
@@ -4340,7 +4341,7 @@ function netJoinWorld(w){
     const u = new URL(location.href); u.searchParams.set('sala', NET.code); u.searchParams.set('mapa', w.map); u.searchParams.set('nome', NET.name); u.searchParams.set('auto', '1');
     mpMsg('Ajustando o mapa ao do anfitrião...'); location.href = u.toString(); return;
   }
-  NET.joining = true; NET.seed = w.seed; NET.hostId = w.f; NET.lastHost = performance.now();
+  NET.joining = true; NEWGAME = false; NET.seed = w.seed; NET.hostId = w.f; NET.lastHost = performance.now();
   mpMsg('Sala encontrada! Gerando a cidade...');
   setTimeout(() => {
     newGame(w.seed);
@@ -4654,6 +4655,7 @@ function netRespawn(){
 function mpMsg(t, bad){ const el = $('#mpMsg'); if (el){ el.textContent = t || ''; el.style.color = bad ? '#ff9a8a' : '#cfe8ff'; } }
 function mpName(){ const v = ($('#mpName').value || '').trim().slice(0, 14) || 'Sobrevivente'; try { localStorage.setItem('zmNome', v); } catch(e){} return v; }
 function mpCreate(){
+  NEWGAME = false;
   const code = rid(4), name = mpName();
   NET.seed = Math.floor(RNDT() * 2147483647);
   netStart('host', code, name);
@@ -4684,6 +4686,22 @@ function netHud(){
     const done = () => { $('#netInv').textContent = 'LINK COPIADO!'; setTimeout(() => { const b = $('#netInv'); if (b) b.textContent = 'CONVIDAR'; }, 1800); };
     if (navigator.clipboard) navigator.clipboard.writeText(u).then(done, () => prompt('Copie o link:', u)); else prompt('Copie o link:', u); };
 }
+// ---------- sair para o menu ----------
+let NEWGAME = false;
+function askMenu(btn){
+  if (btn.dataset.ok !== '1'){ const t = btn.textContent; btn.dataset.ok = '1'; btn.dataset.t = t; btn.textContent = NET.on ? 'TOQUE DE NOVO (SAI DA SALA)' : 'TOQUE DE NOVO PARA SAIR';
+    setTimeout(() => { btn.dataset.ok = ''; btn.textContent = btn.dataset.t; }, 3000); return; }
+  btn.dataset.ok = ''; btn.textContent = btn.dataset.t; backToMenu();
+}
+function backToMenu(){
+  if (NET.on) netStop();
+  if (P && P.car){ try { stopEngine(P.car); } catch(e){} P.car.occ = false; }
+  running = false; paused = false; HUDED = false; unlock(); hidePanels(); panel = null;
+  for (const id of ['#pause', '#dead', '#hud', '#touch', '#prompt', '#act', '#hudEd']){ const el = $(id); if (el) el.style.display = 'none'; }
+  $('#fear').style.opacity = 0; touch.mx = touch.mz = 0; touch.atk = touch.aim = touch.run = false; mouseAim = false; mouseDown = false;
+  $('#bRetry').textContent = 'TENTAR DE NOVO'; $('#bRetry').onclick = () => { newGame(); start(); };
+  NEWGAME = true; mpMsg(''); $('#start').style.display = 'flex';
+}
 // ---------- aplicativo instalado (tela de início) ----------
 const APP = matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 if ('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
@@ -4695,6 +4713,7 @@ function goFull(){
   else lock();
 }
 function mpSetup(){
+  for (const id of ['#bMenu2', '#cfgMenu', '#bMenu3']){ const b = $(id); if (b) b.onclick = e => { e.stopPropagation(); if (id === '#bMenu3') backToMenu(); else askMenu(b); }; }
   for (const id of ['#bStart', '#mpCreate', '#mpJoin', '#bResume', '#bRetry']){ const b = $(id); if (b) b.addEventListener('click', goFull, true); }
   if (isTouch) document.body.classList.add('tch');
   if (isTouch || QS.get('hud')){ for (const id of ['#cfgHud', '#bHud2']){ const b = $(id); b.style.display = ''; b.onclick = e => { e.stopPropagation(); hudEditOpen(); }; } }
