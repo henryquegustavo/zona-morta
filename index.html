@@ -128,10 +128,11 @@ body.hudEd #touch{z-index:75;background:rgba(0,0,0,.35);pointer-events:auto}body
     <div class="mpT">👥 JOGAR COM AMIGOS</div>
     <div class="mpR"><label>Seu nome</label><input id="mpName" maxlength="14" placeholder="Ex.: Gustavo" autocomplete="off"></div>
     <div class="mpR"><button class="btn s mpB" id="mpCreate">CRIAR SALA</button><span class="mpOu">ou</span><input id="mpCode" maxlength="6" placeholder="CÓDIGO" autocomplete="off" style="width:96px;text-transform:uppercase;letter-spacing:3px;text-align:center"><button class="btn s mpB g" id="mpJoin">ENTRAR</button></div>
+    <div class="mpR"><button class="btn s mpB g" id="mpOpts">⚙ OPÇÕES DA SALA / MUNDO</button></div>
     <div id="mpMsg"></div>
   </div>
 </div>
-<div id="pause" class="ov"><h2>PAUSADO</h2><div class="row"><button class="btn" id="bResume">CONTINUAR</button><button class="btn g" id="bGuide2">VER ARMAS</button><button class="btn g" id="bCfg2">CONFIGURAÇÕES</button><button class="btn g" id="bHud2" style="display:none">CONTROLES</button><button class="btn g" id="bMenu2">SAIR PARA O MENU</button></div></div>
+<div id="pause" class="ov"><h2>PAUSADO</h2><div class="box" id="pauseNet" style="display:none;text-align:center;margin-top:10px"></div><div class="row"><button class="btn" id="bResume">CONTINUAR</button><button class="btn g" id="bGuide2">VER ARMAS</button><button class="btn g" id="bCfg2">CONFIGURAÇÕES</button><button class="btn g" id="bHud2" style="display:none">CONTROLES</button><button class="btn g" id="bRoom2">MUNDO / SALA</button><button class="btn g" id="bMenu2">SAIR PARA O MENU</button></div></div>
 <div id="dead" class="ov"><h1>VOCÊ MORREU</h1><div class="box" id="deadTxt" style="margin-top:12px"></div><div class="row"><button class="btn" id="bRetry">TENTAR DE NOVO</button><button class="btn g" id="bMenu3">MENU</button></div></div>
 
 <div id="hud">
@@ -200,21 +201,31 @@ const CFG_DEF = {crossStyle:'circulo', crossColor:'#ffffff', crossSize:1, crossT
   view:3, fov:72, camDist:3.1, shoulder:'direito', headBob:true, shake:true,
   quality:'auto', viewDist:1, rainOn:true, blood:true, showMini:true, showMoods:true, showHot:true, hudScale:1,
   volMaster:0.8, volFx:1, volAmb:1, heartbeat:true, realSfx:true,
-  zSpeed:1, zPop:1, zDmg:1, surround:true, dayLen:1, hordesOn:true, miniRotate:true, miniZoom:1};
+  zSpeed:1, zPop:1, zDmg:1, surround:true, dayLen:1, hordesOn:true, miniRotate:true, miniZoom:1,
+  diff:'normal', startH:8, nightLock:false, fogNight:1, rainMode:'auto', animals:1};
 let CFG = Object.assign({}, CFG_DEF);
 try { Object.assign(CFG, JSON.parse(localStorage.getItem('zm_cfg') || '{}')); } catch(e){}
-function saveCfg(){ try { localStorage.setItem('zm_cfg', JSON.stringify(CFG)); } catch(e){} }
+function saveCfg(){ try { localStorage.setItem('zm_cfg', JSON.stringify(typeof NET !== 'undefined' && NET.myRoom ? Object.assign({}, CFG, NET.myRoom) : CFG)); } catch(e){} }
 const CFG_UI = [
   ['Mira', [['crossStyle', 'Estilo', 'sel', [['circulo', 'Círculo'], ['circulo_ponto', 'Círculo + ponto'], ['cruz', 'Cruz'], ['cruz_circulo', 'Cruz + círculo'], ['cruz_ponto', 'Cruz + ponto'], ['ponto', 'Só ponto']]],
     ['crossColor', 'Cor', 'color'], ['crossSize', 'Tamanho', 'range', 0.5, 2.5, 0.05], ['crossThick', 'Espessura', 'range', 1, 5, 0.5], ['crossOpacity', 'Opacidade', 'range', 0.2, 1, 0.05],
     ['crossDynamic', 'Mira dinâmica (abre ao andar e ao atirar)', 'chk'], ['crossOutline', 'Contorno escuro', 'chk'], ['hitMarker', 'Marcador de acerto (X vermelho)', 'chk']]],
   ['Controles', [['sens', 'Sensibilidade do mouse', 'range', 0.2, 3, 0.05], ['invertY', 'Inverter eixo vertical', 'chk'], ['aimToggle', 'Mirar com um clique (em vez de segurar)', 'chk'], ['touchSens', 'Sensibilidade do toque', 'range', 0.3, 3, 0.05], ['autoReload', 'Recarregar automaticamente', 'chk']]],
   ['Câmera', [['view', 'Câmera', 'sel', [[3, 'Terceira pessoa'], [1, 'Primeira pessoa']]], ['fov', 'Campo de visão', 'range', 55, 100, 1], ['camDist', 'Distância da câmera', 'range', 1.6, 5, 0.1], ['shoulder', 'Ombro da câmera', 'sel', [['direito', 'Direito'], ['esquerdo', 'Esquerdo']]], ['headBob', 'Balanço ao andar', 'chk'], ['shake', 'Tremor da tela', 'chk']]],
-  ['Gráficos', [['quality', 'Qualidade', 'sel', [['auto', 'Automática'], ['baixa', 'Baixa (mais rápido)'], ['media', 'Média'], ['alta', 'Alta']]], ['viewDist', 'Distância de visão', 'range', 0.5, 1.6, 0.05], ['rainOn', 'Chuva', 'chk'], ['blood', 'Sangue', 'chk'], ['showMini', 'Minimapa', 'chk'], ['miniRotate', 'Minimapa gira com o personagem', 'chk'], ['miniZoom', 'Zoom do minimapa', 'range', 0.5, 2.5, 0.1], ['showMoods', 'Indicadores de estado', 'chk'], ['showHot', 'Barra de armas', 'chk'], ['hudScale', 'Tamanho da interface', 'range', 0.7, 1.4, 0.05]]],
+  ['Gráficos', [['quality', 'Qualidade', 'sel', [['auto', 'Automática'], ['baixa', 'Baixa (mais rápido)'], ['media', 'Média'], ['alta', 'Alta']]], ['viewDist', 'Distância de visão', 'range', 0.5, 1.6, 0.05], ['rainOn', 'Efeito de chuva', 'chk'], ['blood', 'Sangue', 'chk'], ['showMini', 'Minimapa', 'chk'], ['miniRotate', 'Minimapa gira com o personagem', 'chk'], ['miniZoom', 'Zoom do minimapa', 'range', 0.5, 2.5, 0.1], ['showMoods', 'Indicadores de estado', 'chk'], ['showHot', 'Barra de armas', 'chk'], ['hudScale', 'Tamanho da interface', 'range', 0.7, 1.4, 0.05]]],
   ['Áudio', [['volMaster', 'Volume geral', 'range', 0, 1, 0.05], ['volFx', 'Efeitos', 'range', 0, 1, 0.05], ['volAmb', 'Ambiente (vento e chuva)', 'range', 0, 1, 0.05], ['heartbeat', 'Batimentos cardíacos', 'chk'], ['realSfx', 'Sons gravados (tiros, zumbis, portas, carro)', 'chk']]],
-  ['Jogabilidade', [['zSpeed', 'Velocidade dos zumbis', 'range', 0.5, 1.6, 0.05], ['zPop', 'Quantidade de zumbis (vale no próximo jogo)', 'range', 0.3, 2, 0.05], ['zDmg', 'Dano dos zumbis', 'range', 0.3, 2, 0.05], ['surround', 'Morrer quando cercado (4+ zumbis)', 'chk'], ['dayLen', 'Duração do dia (×)', 'range', 0.5, 4, 0.25], ['hordesOn', 'Hordas', 'chk']]]
+  ['Mundo / Sala', [['diff', 'Dificuldade', 'sel', [['facil', 'Fácil'], ['normal', 'Normal'], ['dificil', 'Difícil'], ['pesadelo', 'Pesadelo'], ['custom', 'Personalizada']]],
+    ['zPop', 'Quantidade de zumbis', 'range', 0.3, 3, 0.05], ['zSpeed', 'Velocidade dos zumbis', 'range', 0.5, 1.6, 0.05], ['zDmg', 'Dano dos zumbis', 'range', 0.3, 2.5, 0.05], ['surround', 'Morrer quando cercado (4+ zumbis)', 'chk'], ['hordesOn', 'Hordas', 'chk'],
+    ['startH', 'Horário (muda na hora)', 'sel', [[6, 'Amanhecer (6h)'], [8, 'Manhã (8h)'], [12, 'Meio-dia'], [17, 'Fim de tarde (17h)'], [20, 'Anoitecer (20h)'], [23, 'Noite (23h)'], [2, 'Madrugada (2h)']]],
+    ['nightLock', 'Noite eterna (sempre de noite)', 'chk'], ['dayLen', 'Duração do dia (×)', 'range', 0.5, 4, 0.25],
+    ['fogNight', 'Neblina à noite', 'sel', [[1, 'Normal'], [1.6, 'Forte'], [2.4, 'Muito forte']]], ['rainMode', 'Chuva', 'sel', [['auto', 'Vem e vai'], ['sempre', 'Sempre chovendo'], ['nunca', 'Nunca']]],
+    ['animals', 'Animais para caçar', 'range', 0.5, 3, 0.1]], 'room']
 ];
 let cfgTab = 0, MASTER = null, FXG = null, AMBG = null;
+const ROOM_KEYS = ['diff', 'zPop', 'zSpeed', 'zDmg', 'surround', 'hordesOn', 'startH', 'nightLock', 'dayLen', 'fogNight', 'rainMode', 'animals'];
+const DIFFS = {facil:{zPop:0.6, zSpeed:0.8, zDmg:0.6, surround:false}, normal:{zPop:1, zSpeed:1, zDmg:1, surround:true}, dificil:{zPop:1.6, zSpeed:1.2, zDmg:1.4, surround:true}, pesadelo:{zPop:2.6, zSpeed:1.45, zDmg:2, surround:true}};
+const ROOM_TAB = CFG_UI.findIndex(t => t[2] === 'room');
+const roomLocked = () => typeof NET !== 'undefined' && NET.on && NET.role === 'join';
 
 // ================= ITENS E ARMAS =================
 const ITEMS = {
@@ -286,12 +297,12 @@ function genLoot(t){
 let renderer, scene, camera, clock;
 let colliders = [], containers = [], houses = [], zombies = [], corpses = [], chunks = new Map(), grid = new Map(), parts = [], signs = [];
 let P, gameMin = 480, running = false, paused = false, panel = null, lootC = null, prevPanel = null;
-let SILG = null, SILM = null, hemi, sun, flash, muzzle, vm, vmParts = {}, swingT = 0, muzzleT = 0, hudT = 0, spawnT = 0, cullT = 0, nightF = 0, shake = 0;
+let beam = null, beamTex = null, SILG = null, SILM = null, hemi, sun, flash, muzzle, vm, vmParts = {}, swingT = 0, muzzleT = 0, hudT = 0, spawnT = 0, cullT = 0, nightF = 0, shake = 0;
 let mouseDown = false, locked = false, spawnHouse = null;
 const keys = {};
 const touch = {aim:false, joy:null, jx:0, jy:0, mx:0, mz:0, look:null, lx:0, ly:0, atk:false, run:false};
 const MAXZ = SMALL ? 80 : 160, HARDCAP = SMALL ? 160 : 340;
-const TOWN = SMALL ? 190 : 280, FOREST_X = TOWN + 2, WX2 = TOWN + 150, WX1 = -WX2;
+const TOWN = SMALL ? 190 : 280, FOREST_X = TOWN + 2, WX2 = TOWN + 225, WX1 = -WX2;
 const NB = -TOWN - 40, SB = TOWN + 40, WZ1 = NB - (SMALL ? 100 : 135), WZ2 = SB + (SMALL ? 115 : 175), HWY_N = -TOWN - 24, HWY_S = TOWN + 24;
 let flats = [], SEEDX = 0, SEEDZ = 0;
 const DIRT_X0 = TOWN - 4, DIRT_L = WX2 - TOWN - 10, DIRT_C = DIRT_X0 + DIRT_L / 2, CAMP_X = WX2 - 13;
@@ -1842,7 +1853,7 @@ function buildForest(){ forestSide(1); forestSide(-1); }
 function forestSide(sg){
   const xa = FOREST_X, xb = WX2, X = () => sg * R(xa + 2, xb - 2), camp = sg * CAMP_X;
   const CAB = [];
-  for (let k = 0; k < 400 && CAB.length < 10; k++){
+  for (let k = 0; k < 600 && CAB.length < 15; k++){
     const x = sg * R(FOREST_X + 14, WX2 - 14), z = R(-TOWN + 6, TOWN - 6);
     if (Math.abs(z) < 12 || Math.hypot(x - camp, z) < 25 || CAB.some(([a, b]) => Math.hypot(x - a, z - b) < 45)) continue;
     CAB.push([x, z]);
@@ -1850,18 +1861,18 @@ function forestSide(sg){
   for (const [x, z] of CAB) buildCabin(x, z, R(6.5, 8), R(6, 7), z > 0 ? -1 : 1);
   S(GCY, camp, 0.15, 0, 1.2, 0.3, 1.2, 0x3a3a3a); addContainer(camp, 0, 'cabana', 2.2); cookSpots.push({x:camp, z:0, y:0}); addCol({x1:camp - 0.6, x2:camp + 0.6, z1:-0.6, z2:0.6, h:0.3});
   const nearCabin = (x, z, r) => CAB.some(([a, b]) => Math.hypot(x - a, z - b) < r);
-  const nTrees = SMALL ? 900 : 1700;
-  for (let k = 0, made = 0; k < 6500 && made < nTrees; k++){
+  const nTrees = SMALL ? 1300 : 2500;
+  for (let k = 0, made = 0; k < 9500 && made < nTrees; k++){
     const x = X(), z = R(NB + 2, SB - 2);
     if (Math.abs(z) < 4 || Math.abs(z - HWY_N) < 9 || Math.abs(z - HWY_S) < 9 || nearCabin(x, z, 9) || Math.hypot(x - camp, z) < 8 || hitAny(x, z, 1.3)) continue;
     buildTree(x, z, Math.random() < 0.6 ? 'pine' : 'leaf'); made++;
   }
-  for (let k = 0; k < 600; k++){ const x = X(), z = R(NB, SB); if (Math.abs(z) < 3 || Math.abs(z - HWY_N) < 8 || Math.abs(z - HWY_S) < 8) continue; S(GIC, x, 0.35, z, R(.5, .9), R(.35, .6), R(.5, .9), pick([0x3a5a2a, 0x2f4a24, 0x4a6030]), R(0, 3)); }
-  for (let k = 0; k < 130; k++){
+  for (let k = 0; k < 900; k++){ const x = X(), z = R(NB, SB); if (Math.abs(z) < 3 || Math.abs(z - HWY_N) < 8 || Math.abs(z - HWY_S) < 8) continue; S(GIC, x, 0.35, z, R(.5, .9), R(.35, .6), R(.5, .9), pick([0x3a5a2a, 0x2f4a24, 0x4a6030]), R(0, 3)); }
+  for (let k = 0; k < 190; k++){
     const x = X(), z = R(NB, SB); if (Math.abs(z) < 4 || Math.abs(z - HWY_N) < 9 || Math.abs(z - HWY_S) < 9 || nearCabin(x, z, 7) || hitAny(x, z, 1.2)) continue;
     const s = R(0.5, 1.1); S(GIC, x, 0.25, z, s, s * 0.7, s * 1.1, 0x6b6b66, R(0, 3)); addCol({x1:x - s * .8, x2:x + s * .8, z1:z - s * .8, z2:z + s * .8, h:s * 0.6});
   }
-  for (let k = 0; k < 75; k++){
+  for (let k = 0; k < 110; k++){
     const x = X(), z = R(NB, SB), len = R(3, 6), az = Math.random() < .5;
     if (Math.abs(z) < 5 || Math.abs(z - HWY_N) < 10 || Math.abs(z - HWY_S) < 10 || nearCabin(x, z, 8) || hitAny(x, z, len / 2 + 0.5)) continue;
     S(GCY, x, 0.28, z, 0.55, len, 0.55, 0x5a4030, az ? 0 : Math.PI / 2, Math.PI / 2);
@@ -2124,10 +2135,11 @@ function surroundCheck(dt){
   P.around = n;
   if (n >= 4 && CFG.surround){ P.surr += dt; if (P.surr > 2.0){ P.dragged = true; P.vida = 0; } } else P.surr = Math.max(0, P.surr - dt * 2);
 }
-function stairGoal(z){
+function stairGoal(z, ty){
+  if (ty === undefined) ty = P.y;
   const b = inHouse(z.x, z.z); if (!b || !b.flights || !b.flights.length) return null;
   const on = b.flights.find(f => z.y > f.y0 + 0.05 && z.y < f.y1 - 0.05 && Math.abs((f.dx !== 0 ? z.z - f.z0 : z.x - f.x0)) < 1.0);
-  if (P.y > z.y){
+  if (ty > z.y){
     if (on) return {x:on.x1 + on.dx, z:on.z1 + on.dz, f:on};
     const f = b.flights.find(f => Math.abs(f.y0 - z.y) < 0.35); if (!f) return null;
     return Math.hypot(f.x0 - z.x, f.z0 - z.z) > 0.7 ? {x:f.x0 - f.dx * 0.5, z:f.z0 - f.dz * 0.5, f} : {x:f.x1 + f.dx, z:f.z1 + f.dz, f};
@@ -2143,6 +2155,8 @@ const ANIM = {
   javali:{nome:'javali', hp:95, walk:1.1, run:6.2, rad:0.45, h:0.95, carne:2, flee:11, aggr:true, legH:0.38, legW:0.1, legs:[[0.16, 0.32], [-0.16, 0.32], [0.16, -0.32], [-0.16, -0.32]]},
   coelho:{nome:'coelho', hp:15, walk:0.9, run:6.5, rad:0.2, h:0.4, carne:1, flee:9, legH:0.12, legW:0.05, hop:true, legs:[[0.06, 0.1], [-0.06, 0.1], [0.07, -0.1], [-0.07, -0.1]]},
   galinha:{nome:'galinha', hp:10, walk:0.6, run:2.8, rad:0.2, h:0.5, carne:1, flee:4, legH:0.22, legW:0.035, legs:[[0.06, 0], [-0.06, 0]]},
+  capivara:{nome:'capivara', hp:70, walk:0.7, run:5.2, rad:0.42, h:0.85, carne:3, flee:10, legH:0.26, legW:0.11, legs:[[0.17, 0.36], [-0.17, 0.36], [0.17, -0.34], [-0.17, -0.34]]},
+  peru:{nome:'peru selvagem', hp:22, walk:0.7, run:4.8, rad:0.25, h:0.9, carne:2, flee:12, legH:0.34, legW:0.04, legs:[[0.07, 0], [-0.07, 0]]},
   vaca:{nome:'vaca', hp:170, walk:0.5, run:3.2, rad:0.65, h:1.6, carne:5, flee:5, legH:0.75, legW:0.15, legs:[[0.28, 0.65], [-0.28, 0.65], [0.28, -0.65], [-0.28, -0.65]]}
 };
 let animals = [], AG = null, animalMat = null, animT = 0;
@@ -2154,7 +2168,9 @@ function buildAnimalGeos(){
     coelho:mergedGeo([B(0, 0.2, 0, 0.2, 0.2, 0.34, 0x8a8278), B(0, 0.3, 0.2, 0.14, 0.14, 0.14, 0x8a8278), B(0.04, 0.45, 0.17, 0.04, 0.17, 0.03, 0x9a9288), B(-0.04, 0.45, 0.17, 0.04, 0.17, 0.03, 0x9a9288), B(0, 0.22, -0.18, 0.08, 0.08, 0.06, 0xf0f0f0)]),
     galinha:mergedGeo([B(0, 0.38, 0, 0.24, 0.24, 0.32, 0xf0ece0), B(0, 0.44, -0.19, 0.14, 0.2, 0.08, 0xe8e4d8), B(0, 0.58, 0.14, 0.12, 0.14, 0.12, 0xf0ece0), B(0, 0.56, 0.22, 0.04, 0.04, 0.06, 0xe0a020), B(0, 0.67, 0.14, 0.03, 0.06, 0.08, 0xd02020)]),
     vaca:mergedGeo([B(0, 1.15, 0, 0.78, 0.78, 1.7, 0xece8e0), B(0.2, 1.3, 0.3, 0.4, 0.42, 0.5, 0x1a1a1a), B(-0.25, 1.1, -0.4, 0.3, 0.5, 0.6, 0x1a1a1a), B(0, 1.32, 1.0, 0.36, 0.4, 0.5, 0xece8e0), B(0, 1.22, 1.27, 0.3, 0.2, 0.08, 0xd8a8a0), B(0.2, 1.55, 0.95, 0.06, 0.12, 0.06, 0xd8d0b0), B(-0.2, 1.55, 0.95, 0.06, 0.12, 0.06, 0xd8d0b0), B(0, 0.72, -0.2, 0.2, 0.12, 0.2, 0xe0a0a0), B(0, 1.2, -0.88, 0.05, 0.5, 0.05, 0x1a1a1a)]), leg:{}};
-  const LC = {veado:0x6a4426, javali:0x2a1e18, coelho:0x8a8278, galinha:0xe0a020, vaca:0xd8d4cc};
+  AG.capivara = mergedGeo([B(0, 0.52, 0, 0.5, 0.48, 0.95, 0x7a5a3a), B(0, 0.6, 0.55, 0.3, 0.34, 0.36, 0x6e5034), B(0, 0.54, 0.76, 0.24, 0.24, 0.12, 0x5a4028), B(0.09, 0.76, 0.6, 0.06, 0.06, 0.05, 0x4a3420), B(-0.09, 0.76, 0.6, 0.06, 0.06, 0.05, 0x4a3420), B(0.09, 0.64, 0.74, 0.04, 0.04, 0.03, 0x111111), B(-0.09, 0.64, 0.74, 0.04, 0.04, 0.03, 0x111111)]);
+  AG.peru = mergedGeo([B(0, 0.6, 0, 0.32, 0.34, 0.42, 0x3a2a1e), B(0, 0.72, -0.28, 0.5, 0.42, 0.1, 0x5a3e26), B(0, 0.72, -0.3, 0.42, 0.34, 0.08, 0x8a6a40), B(0, 0.86, 0.22, 0.08, 0.26, 0.08, 0x9aa8c0), B(0, 1.0, 0.26, 0.09, 0.09, 0.1, 0x9aa8c0), B(0, 0.95, 0.32, 0.03, 0.08, 0.03, 0xc02020), B(0, 1.0, 0.32, 0.03, 0.03, 0.06, 0xd0a040)]);
+  const LC = {veado:0x6a4426, javali:0x2a1e18, coelho:0x8a8278, galinha:0xe0a020, vaca:0xd8d4cc, capivara:0x5a4028, peru:0xb08040};
   for (const k in ANIM){ const d = ANIM[k]; AG.leg[k] = mergedGeo([[GB, 0, -d.legH / 2, 0, d.legW, d.legH, d.legW, LC[k], 0, 0, 0]]); }
   animalMat = new THREE.MeshLambertMaterial({vertexColors:true});
 }
@@ -2179,8 +2195,8 @@ function wildSpot(type, minD){
   return null;
 }
 function spawnAnimals(){
-  const n = isTouch ? 0.5 : 1;
-  for (const [t, c] of [['veado', 22], ['javali', 12], ['coelho', 26]]) for (let i = 0; i < Math.round(c * n); i++){ const p = wildSpot(t, 30); if (p) makeAnimal(t, p[0], p[1], null); }
+  const n = (isTouch ? 0.6 : 1) * (+CFG.animals || 1);
+  for (const [t, c] of [['veado', 36], ['javali', 20], ['coelho', 40], ['capivara', 18], ['peru', 16]]) for (let i = 0; i < Math.round(c * n); i++){ const p = wildSpot(t, 30); if (p) makeAnimal(t, p[0], p[1], null); }
   for (const f of FARMS){
     if (f.coop) for (let i = 0; i < 5; i++) makeAnimal('galinha', R(f.coop.x1 + 0.6, f.coop.x2 - 0.6), R(f.coop.z1 + 0.6, f.coop.z2 - 0.6), f.coop);
     if (f.pen) for (let i = 0; i < RI(2, 4); i++) makeAnimal('vaca', R(f.pen.x1 + 1.5, f.pen.x2 - 1.5), R(f.pen.z1 + 1.5, f.pen.z2 - 1.5), f.pen);
@@ -2201,7 +2217,7 @@ function hitAnimal(a, dmg){
 function updateAnimals(dt){
   const far = scene.fog.far + 10;
   animT -= dt;
-  if (animT <= 0){ animT = 15; let w = 0; for (const a of animals) if (!a.home && !a.dead) w++; if (w < (isTouch ? 30 : 60) * 0.6){ const t = pick(['veado', 'veado', 'javali', 'coelho', 'coelho']); const p = wildSpot(t, 80); if (p) makeAnimal(t, p[0], p[1], null); } }
+  if (animT <= 0){ animT = 8; let w = 0; for (const a of animals) if (!a.home && !a.dead) w++; if (w < (isTouch ? 50 : 100) * (+CFG.animals || 1)){ const t = pick(['veado', 'veado', 'javali', 'coelho', 'coelho', 'capivara', 'peru']); const p = wildSpot(t, 80); if (p) makeAnimal(t, p[0], p[1], null); } }
   for (let i = animals.length - 1; i >= 0; i--){
     const a = animals[i], d = a.d, dx = P.x - a.x, dz = P.z - a.z, dp = Math.hypot(dx, dz) || 0.01;
     a.g.visible = dp < far;
@@ -2298,6 +2314,7 @@ function alertNear(src){
 }
 
 function updateZombies(dt){
+  if (!NET.on || NET.role !== 'join') updatePiles(dt);
   const night = nightF > 0.6, far = scene.fog.far + 6, eyeFar = night ? 45 : far;
   screamT -= dt; zStepT -= dt;
   for (let i = 0; i < zombies.length; i++){
@@ -2326,6 +2343,8 @@ function updateZombies(dt){
         const ey = z.y + ((z.crawl || z.down > 0) ? 0.45 : 1.55);
         if (inCone && (losLine(z.x, ey, z.z, T.x, T.y + T.eye - 0.12, T.z) || losLine(z.x, ey, z.z, T.x, T.y + (T.agach ? 0.55 : 1.05), T.z))) seen = true;
       }
+      // quem já te persegue sabe que você subiu: fica embaixo gemendo e tentando subir (agachado e parado você some)
+      if (!seen && chasing && T.y - z.y > 1.3 && dp < 11 && !(T.agach && still)) seen = true;
       if (seen && !chasing){
         // tempo para perceber: perto é na hora, longe demora (agachado demora mais)
         const need = (dp < smell ? 0.05 : 0.25 + 1.6 * (dp / sight) ** 2) * (T.agach ? 1.6 : 1);
@@ -2354,7 +2373,8 @@ function updateZombies(dt){
     speedNow = 0;
     if (z.down > 0 && !z.dchk){ z.dchk = 1; const ry = z.g.rotation.y; if (!lieFree(z.x, z.z, z.y, Math.sin(ry), Math.cos(ry)) && lieFree(z.x, z.z, z.y, Math.cos(ry), -Math.sin(ry))) z.g.rotation.y += Math.PI / 2; }
     if (!(z.down > 0) && !(z.getUp > 0)) z.dchk = 0;
-    if (z.down > 0){ z.down -= dt; if (z.down <= 0) z.getUp = 0.7; }
+    if (z.pile || z.climbO){ speedNow = pileStep(z, T, dt); }
+    else if (z.down > 0){ z.down -= dt; if (z.down <= 0) z.getUp = 0.7; }
     else if (z.getUp > 0){ z.getUp -= dt; }
     else if (z.stag > 0){ z.stag -= dt; }
     else if (z.bang && bangUpdate(z, dt, dp)){ }
@@ -2375,7 +2395,7 @@ function updateZombies(dt){
       }
       let ddx = z.tx - z.x, ddz = z.tz - z.z, d = Math.hypot(ddx, ddz), toDoor = false;
       if (z.state !== 'wander' && d > 1.2){ const bt = inHouse(z.tx, z.tz); if (bt && bt.dpx !== undefined && inHouse(z.x, z.z) !== bt){ const ax = bt.dpx + bt.dnx * 0.9, az = bt.dpz + bt.dnz * 0.9; if (Math.hypot(z.x - ax, z.z - az) > 1.0){ ddx = ax - z.x; ddz = az - z.z; d = Math.hypot(ddx, ddz); } else { ddx = bt.dpx - z.x; ddz = bt.dpz - z.z; d = Math.max(0.5, Math.hypot(ddx, ddz)); toDoor = true; } } }
-      if (z.state !== 'wander' && Math.abs(T.y - z.y) > 1.3){ const sg = stairGoal(z); if (sg){ ddx = sg.x - z.x; ddz = sg.z - z.z; d = Math.hypot(ddx, ddz); const f = sg.f; if (f && z.y > f.y0 + 0.05 && z.y < f.y1 - 0.05){ const k = Math.min(1, dt * 8); if (f.dx !== 0) z.z += (f.z0 - z.z) * k; else z.x += (f.x0 - z.x) * k; } } }
+      if (z.state !== 'wander' && Math.abs(T.y - z.y) > 1.3){ const sg = stairGoal(z, T.y); if (!sg && z.state === 'chase' && T.y - z.y > 1.3 && !T.car && !z.crawl && dp < 16) pileJoin(z, T); else z.pgoal = null; if (!sg && z.pgoal){ ddx = z.pgoal.x - z.x; ddz = z.pgoal.z - z.z; d = Math.hypot(ddx, ddz); } if (sg){ ddx = sg.x - z.x; ddz = sg.z - z.z; d = Math.hypot(ddx, ddz); const f = sg.f; if (f && z.y > f.y0 + 0.05 && z.y < f.y1 - 0.05){ const k = Math.min(1, dt * 8); if (f.dx !== 0) z.z += (f.z0 - z.z) * k; else z.x += (f.x0 - z.x) * k; } } }
       const same = Math.abs(T.y - z.y) < 1.2;
       if (z.state === 'chase' && dp < (T.car ? 2.75 : 1.0) && same){
         d = 0; z.g.rotation.y = lerpAng(z.g.rotation.y, Math.atan2(dxp, dzp), dt * 8);
@@ -2404,7 +2424,8 @@ function updateZombies(dt){
       }
     }
     }
-    if (dp < 70 || ((z.gyT = (z.gyT || 0) - dt) < 0 && (z.gyT = 0.6))){ const gy = groundAt(z.x, z.z, 0.25, z.y); z.y = z.y > gy + 0.01 ? Math.max(gy, z.y - 9 * dt) : gy; }
+    const pileV = z.pile || z.climbO || (z.rep && z.net && (z.net.fl & 128));
+    if (!pileV && (dp < 70 || ((z.gyT = (z.gyT || 0) - dt) < 0 && (z.gyT = 0.6)))){ const gy = groundAt(z.x, z.z, 0.25, z.y); z.y = z.y > gy + 0.01 ? Math.max(gy, z.y - 9 * dt) : gy; }
     const vis = dp < Math.max(far, eyeFar); z.g.visible = vis;
     if (vis){
       const s = Math.sin(z.anim);
@@ -2449,12 +2470,13 @@ function updateZombies(dt){
         z.aL.rotation.x = z.aR.rotation.x = -1.4 * (1 - e) - 0.4 * e; z.lL.rotation.x = 0.5 * (1 - e); z.lR.rotation.x = -0.3 * (1 - e);
         z.g.rotation.z = Math.sin(k * 10) * 0.18 * (1 - e); if (z.fallC <= 0) blood(z.x, z.y + 0.1, z.z, 8);
       }
+      if (pileV) lx = pilePose(z);
       z.g.rotation.x = lx;
       { const ry = z.g.rotation.y, fx = Math.sin(ry), fz = Math.cos(ry), dK = z.down > 0 ? 1 : z.getUp > 0 ? z.getUp / 0.7 : 0, cK = z.crawl ? (z.fallC > 0 ? (1 - Math.max(0, z.fallC) / 0.8) ** 2 : 1) : 0, off = 0.85 * dK - 0.8 * cK;
         z.g.position.set(z.x + fx * off, z.y + oy, z.z + fz * off); }
       // nada do zumbi atravessa parede/muro: se a cabeça ou a mão entrar, ele endireita o corpo e recolhe o braço
       const upright = !z.crawl && !(z.down > 0) && !(z.getUp > 0);
-      if (dp < 30){
+      if (dp < 30 && !pileV){
         z.g.updateMatrixWorld(true);
         // do peito até a frente da cabeça: se algum ponto cair dentro de parede, a cabeça atravessou
         const headIn = () => { z.g.updateMatrixWorld(true); z.g.localToWorld(_hv2.set(0, 1.25, 0)); z.head.localToWorld(_hv.set(0, 0.16, 0.16));
@@ -3155,11 +3177,18 @@ function renderCfg(){
     else if (type === 'chk'){ inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!CFG[key]; inp.onchange = () => { CFG[key] = inp.checked; applyCfg(key); }; box.append(inp); }
     else if (type === 'color'){ inp = document.createElement('input'); inp.type = 'color'; inp.value = CFG[key]; inp.oninput = () => { CFG[key] = inp.value; applyCfg(key); }; box.append(inp); }
     else { inp = document.createElement('select'); for (const [val, txt] of a){ const op = document.createElement('option'); op.value = val; op.textContent = txt; if (String(CFG[key]) === String(val)) op.selected = true; inp.appendChild(op); } inp.onchange = () => { CFG[key] = typeof a[0][0] === 'number' ? +inp.value : inp.value; applyCfg(key); }; box.append(inp); }
+    if (inp){ inp.dataset.k = key; if (CFG_UI[cfgTab][2] === 'room' && roomLocked()) inp.disabled = true; }
     row.appendChild(box); L.appendChild(row);
   }
+  if (CFG_UI[cfgTab][2] === 'room'){ const n = document.createElement('div'); n.className = 'cfgr'; n.style.cssText = 'opacity:.75;font-size:12px;display:block';
+    n.textContent = roomLocked() ? '🔒 Quem manda nestas opções é o anfitrião da sala.' : (typeof NET !== 'undefined' && NET.on ? '👥 Você é o anfitrião: o que mudar aqui vale para todos da sala na hora.' : 'Vale para o jogo solo e para a sala que você criar.'); L.prepend(n); }
   $('#cfgPrevW').style.display = cfgTab === 0 ? 'block' : 'none'; drawCross($('#cfgPrev'), 16, false, 0);
 }
 function applyCfg(key){
+  if (key === 'diff' && DIFFS[CFG.diff]){ Object.assign(CFG, DIFFS[CFG.diff]); if (panel === 'cfg') renderCfg(); }
+  else if (key && DIFFS[CFG.diff] && DIFFS[CFG.diff][key] !== undefined){ CFG.diff = 'custom'; const sl = document.querySelector('#cfgL [data-k="diff"]'); if (sl) sl.value = 'custom'; }
+  if (key === 'startH' && P && !roomLocked()) gameMin = Math.floor(gameMin / 1440) * 1440 + CFG.startH * 60;
+  if (key && ROOM_KEYS.includes(key) && typeof NET !== 'undefined' && NET.on && NET.role === 'host') netSend({t:'o', o:netRoomOpts()});
   saveCfg(); P && (P.crossKey = '');
   if (!key || key === 'quality'){ const q = CFG.quality; renderer.setPixelRatio(q === 'baixa' ? 0.7 : q === 'media' ? 1 : q === 'alta' ? Math.min(devicePixelRatio, 1.75) : Math.min(devicePixelRatio, isTouch ? 1 : 1.25)); renderer.setSize(innerWidth, innerHeight); }
   if ((!key || key === 'view') && P) P.view = CFG.view;
@@ -3476,6 +3505,8 @@ function startAmbience(){
 function updateRain(dt){
   rainT -= dt;
   if (!CFG.rainOn) rainOn = false;
+  else if (CFG.rainMode === 'sempre' && !roomLocked()){ if (!rainOn){ rainOn = true; log('Começou a chover. Os zumbis escutam e enxergam menos.', '#9fd4ff'); } }
+  else if (CFG.rainMode === 'nunca' && !roomLocked()){ if (rainOn){ rainOn = false; log('A chuva parou.', '#9fd4ff'); } }
   else if (rainT <= 0){ rainT = 30; if (rainOn ? Math.random() < 0.25 : Math.random() < 0.08){ rainOn = !rainOn; log(rainOn ? 'Começou a chover. Os zumbis escutam e enxergam menos.' : 'A chuva parou.', '#9fd4ff'); } }
   rainK += ((rainOn ? 1 : 0) - rainK) * Math.min(1, dt * 0.25);
   const inside = !!insideBld(P.x, P.z, P.y);
@@ -3877,6 +3908,7 @@ function updateCamera(moving, air, dt){
 }
 
 const _lv = new THREE.Vector3();
+const _bz = new THREE.Vector3(0, 0, -1);
 function updateLamp(){
   if (!pm || !flash) return;
   const on = !!P.luz, third = P.view === 3 && !P.car && pm.g.visible;
@@ -3886,6 +3918,9 @@ function updateLamp(){
     pm.lamp.getWorldPosition(_lv); camera.worldToLocal(_lv); flash.position.copy(_lv);
     flash.target.position.set(0, 0, -14);
   } else { flash.position.set(0.15, -0.1, 0); flash.target.position.set(0, 0, -5); }
+  if (beam){ beam.visible = on && third && nightF > 0.25;
+    if (beam.visible){ beam.position.copy(flash.position); _lv.copy(flash.target.position).sub(flash.position).normalize(); beam.quaternion.setFromUnitVectors(_bz, _lv);
+      beam.material.opacity = (0.035 + 0.075 * nightF) * (0.75 + 0.35 * ((+CFG.fogNight || 1) - 1) + 0.4 * rainK); } }
 }
 
 // ================= LOOP =================
@@ -3895,11 +3930,12 @@ function updateEnv(){
   const forest = inForest(P.x) ? 0.75 : 1;
   const col = new THREE.Color(0x060a12).lerp(new THREE.Color(forest < 1 ? 0x7f9488 : 0x98a9b3), s);
   col.multiplyScalar(1 - 0.3 * rainK);
-  scene.background = col; scene.fog.color = col; scene.fog.near = 1 + 9 * s; scene.fog.far = (20 + 60 * s) * forest * (1 - 0.35 * rainK) * CFG.viewDist * QF;
+  scene.background = col; scene.fog.color = col; const nfog = 1 + ((+CFG.fogNight || 1) - 1) * nightF, lit = P.luz ? 1 + 0.3 * nightF : 1;
+  scene.fog.near = (1 + 9 * s) / nfog; scene.fog.far = (20 + 60 * s) * forest * (1 - 0.35 * rainK) * CFG.viewDist * QF * lit / nfog;
   const inB = insideBld(P.x, P.z, P.y) ? (0.62 + 0.25 * s) : 1;
   hemi.intensity = (0.13 + 0.5 * s) * (1 - 0.3 * rainK) * inB; sun.intensity = (0.04 + 0.75 * s) * (1 - 0.5 * rainK) * inB;
   hemi.color.setRGB(0.55 + 0.25 * s, 0.6 + 0.25 * s, 0.85);
-  flash.intensity = P.luz ? 2.4 : 0;
+  flash.intensity = P.luz ? 2.8 + 2.6 * nightF : 0;
   if (lampIM){ const on = Math.floor(gameMin / 1440) < 3 && nightF > 0.4; poolIM.visible = on;
     lampT -= 0.016; if (lampT <= 0){ lampT = 0.4; const near = on ? lamps.filter(l => Math.abs(l[0] - P.x) < 30 && Math.abs(l[2] - P.z) < 30).sort((a, b) => Math.hypot(a[0] - P.x, a[2] - P.z) - Math.hypot(b[0] - P.x, b[2] - P.z)) : []; lampLights.forEach((L, i) => { const l = near[i]; if (l){ L.position.set(l[0], 4.6, l[2]); L.intensity = 1.1; } else L.intensity = 0; }); } if (lampIM.userData.on !== on){ lampIM.userData.on = on; lampIM.material.color.setHex(on ? 0xfff2b8 : 0x6a6a60); lampIM.material.fog = !on; lampIM.material.needsUpdate = true; if (!on && nightF > 0.4 && Math.floor(gameMin / 1440) >= 3) log('A energia da cidade acabou. Os postes se apagaram.', '#c9c0a8'); } }
 }
@@ -3908,8 +3944,13 @@ function cullChunks(){
   for (const c of chunks.values()) if (c.mesh) c.mesh.visible = Math.hypot(c.cx - P.x, c.cz - P.z) < lim;
   for (const s of signs) s.visible = Math.hypot(s.position.x - P.x, s.position.z - P.z) < lim;
 }
-function update(dt){
+// relógio do jogo (com a opção de noite eterna: pula o dia e volta para o anoitecer)
+function tickClock(dt){
   gameMin += dt * 2 / CFG.dayLen;
+  if (CFG.nightLock && !roomLocked()){ const d0 = Math.floor(gameMin / 1440) * 1440, h = (gameMin - d0) / 60; if (h > 4.5 && h < 20.5) gameMin = d0 + 20.5 * 60; }
+}
+function update(dt){
+  tickClock(dt);
   updateEnv();
   let mx = P.fin ? 0 : touch.mx, mz = P.fin ? 0 : touch.mz;
   if (!P.fin){
@@ -4021,8 +4062,8 @@ function update(dt){
     spawnT = 3; const day = Math.floor(gameMin / 1440);
     let solo = 0; for (const z of zombies) if (!z.horde) solo++;
     const target = Math.min(MAXZ * CFG.zPop, (isTouch ? 60 : 120) * CFG.zPop + day * 12 + (nightF > .6 ? 12 : 0));
-    if (solo < target && zombies.length < HARDCAP) spawnZombie(40);
-    if (CFG.hordesOn && hordes.length < 3 + Math.min(3, day) && Math.random() < 0.06) spawnHorde(day === 0 ? pick([10, 15, 30]) : pick([10, 15, 30, 60]), false, 90);
+    for (let k = 0, nk = solo < target * 0.7 ? 3 : 1; k < nk && solo + k < target && zombies.length < HARDCAP; k++) spawnZombie(40);
+    if (CFG.hordesOn && hordes.length < 3 + Math.min(3, day) && Math.random() < 0.06) spawnHorde(Math.max(6, Math.round((day === 0 ? pick([10, 15, 30]) : pick([10, 15, 30, 60])) * Math.min(2, CFG.zPop))), false, 90);
   }
   cullT -= dt; if (cullT <= 0){ cullT = 0.3; cullChunks(); }
   if (!panel){
@@ -4058,6 +4099,7 @@ function loop(){
 
 // ================= INÍCIO =================
 function newGame(seed){
+  PILES = [];
   const RND0 = Math.random; if (seed !== undefined) Math.random = mulberry(seed);
   if (scene){ for (const c of chunks.values()) if (c.mesh) c.mesh.geometry.dispose(); }
   scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x98a9b3, 10, 80);
@@ -4068,8 +4110,14 @@ function newGame(seed){
   sun = new THREE.DirectionalLight(0xfff2dd, 0.8); sun.position.set(50, 80, 30); scene.add(sun);
   camera.children.slice().forEach(c => camera.remove(c));
   scene.add(camera);
-  flash = new THREE.SpotLight(0xfff1d0, 0, 32, Math.PI / 6.5, 0.45, 1.2); flash.position.set(0.15, -0.1, 0); camera.add(flash);
+  flash = new THREE.SpotLight(0xfff1d0, 0, 50, Math.PI / 5.4, 0.55, 1); flash.position.set(0.15, -0.1, 0); camera.add(flash);
   const tg = new THREE.Object3D(); tg.position.set(0, 0, -5); camera.add(tg); flash.target = tg;
+  // facho visível da lanterna (aparece na neblina e na chuva, em terceira pessoa)
+  if (!beamTex){ const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 4, 128); beamTex = new THREE.CanvasTexture(c); }
+  { const bg = new THREE.CylinderGeometry(0.05, 1, 1, 20, 1, true); bg.translate(0, -0.5, 0); bg.rotateX(Math.PI / 2);
+    beam = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({color:0xfff1d0, map:beamTex, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false, fog:false, side:THREE.DoubleSide}));
+    const L = 11, r = Math.tan(Math.PI / 5.4) * L * 0.7; beam.scale.set(r, r, L); beam.visible = false; beam.renderOrder = 5; camera.add(beam); }
   muzzle = new THREE.PointLight(0xffc870, 0, 10); muzzle.position.set(0.25, -0.15, -0.8); camera.add(muzzle);
   P = null;
   try { buildWorld(); } finally { Math.random = RND0; }
@@ -4082,13 +4130,13 @@ function newGame(seed){
   addItem('espingarda'); P.inv[0].mag = 6; P.inv[0].sil = true; P.ammo['12'] = 36;   // espingarda com silenciador (para testar)
   addItem('pistola'); P.inv[1].mag = 15; P.ammo['9mm'] = 15;
   addItem('taco'); addItem('agua'); addItem('salg');
-  gameMin = 480;
+  gameMin = (CFG.startH === undefined ? 8 : CFG.startH) * 60;
   spawnAnimals();
   for (let i = 0; i < Math.round((isTouch ? 75 : 165) * CFG.zPop); i++) spawnZombie(28);
   if (CFG.hordesOn){ const q = n => Math.max(6, Math.round(n * CFG.zPop)); spawnHorde(q(15), false, 55, 85); spawnHorde(q(30), false, 120); if (!isTouch){ spawnHorde(q(10), false, 90); spawnHorde(q(60), false, 170); spawnHorde(q(30), false, 200); } }
   beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 70, 10, 1, true), new THREE.MeshBasicMaterial({color:0x40c0ff, transparent:true, opacity:0.35, depthWrite:false, fog:false, side:THREE.DoubleSide}));
   beacon.visible = false; scene.add(beacon);
-  gameMin = 480; swingT = 0; spawnT = 3; cullT = 0;
+  gameMin = (CFG.startH === undefined ? 8 : CFG.startH) * 60; swingT = 0; spawnT = 3; cullT = 0;
   updateEnv(); cullChunks(); updateHUD(); setVM();
   $('#log').innerHTML = '';
 }
@@ -4127,6 +4175,7 @@ function init(){
   $('#bGuide').onclick = () => openGuide('start');
   $('#bGuide2').onclick = () => openGuide('pause');
   $('#bCfg').onclick = () => openCfg('start'); $('#bCfg2').onclick = () => openCfg('pause');
+  $('#mpOpts').onclick = e => { e.stopPropagation(); cfgTab = ROOM_TAB; openCfg('start'); }; $('#bRoom2').onclick = e => { e.stopPropagation(); cfgTab = ROOM_TAB; openCfg('pause'); };
   $('#gear').onclick = () => openCfg(paused ? 'pause' : 'game'); $('#cfgX').onclick = closePanel;
   $('#cfgReset').onclick = () => { CFG = Object.assign({}, CFG_DEF); applyCfg(); renderCfg(); };
   $('#bResume').onclick = () => { lock(); if (isTouch){ paused = false; $('#pause').style.display = 'none'; } };
@@ -4157,6 +4206,108 @@ function init(){
   loop();
   mpSetup();
 }
+// ================= PILHA DE ZUMBIS =================
+// Quando o alvo está num lugar alto que eles não alcançam (telhado, muro, carro, prédio) e não há escada,
+// os zumbis que perseguem se amontoam encostados na parede e sobem uns por cima dos outros.
+// Cada camada sobe ~0,6 m; quando o de cima alcança a borda, ele se puxa para cima e continua a perseguição.
+let PILES = [];
+const PILE_LH = 0.65, PILE_REACH = 2.3, PILE_MAX = 40;
+const pileCap = L => L < 2 ? 2 : 1;           // quantos cabem em cada camada
+function pileSlot(i){ let L = 0, k = i; while (k >= pileCap(L)){ k -= pileCap(L); L++; } return [L, k, pileCap(L)]; }
+// acha a base (no chão, encostada na parede) e a borda (em cima) entre o alvo e o zumbi
+function pileAnchor(T, z){
+  // anda do zumbi em direção ao alvo: o último ponto de céu aberto antes de ter telhado/laje em cima é a base da pilha
+  let dx = T.x - z.x, dz = T.z - z.z; const L0 = Math.hypot(dx, dz) || 1; dx /= L0; dz /= L0;
+  const topRef = T.y + 0.3; let open = false, bx = 0, bz = 0, gy = 0;
+  for (let s = -1.6; s < Math.min(16, L0); s += 0.2){
+    const x = z.x + dx * s, zz = z.z + dz * s, g = groundAt(x, zz, 0.12, topRef), fl = groundAt(x, zz, 0.12, z.y + 0.7);
+    // céu aberto ou só um obstáculo baixo (cerca, varanda, carro): segue andando
+    if (g < z.y + 1.2 || g < T.y - 0.7){ open = true; bx = x; bz = zz; gy = Math.min(fl, z.y + 0.3); continue; }
+    if (!open) continue;
+    return {bx:bx - dx * 0.15, bz:bz - dz * 0.15, gy0:gy, ex:x, ez:zz, ey:g, nx:-dx, nz:-dz, h:g - gy};
+  }
+  return null;
+}
+function pileJoin(z, T){
+  if (z.pile || z.climbO) return;
+  if ((z.pjT = (z.pjT || 0) - 1 / 30) > 0) return;   // pensa nisso só de vez em quando (economiza CPU)
+  z.pjT = R(0.3, 0.5); z.pgoal = null;
+  if (z.crawl || z.down > 0 || z.big && Math.random() < 0.5) return;
+  // prefere uma pilha que já existe (a multidão converge para o mesmo ponto)
+  let p = null, bd = 9;
+  for (const q of PILES) if (q.T === T && q.m.length < PILE_MAX){ const d = Math.hypot(q.bx - z.x, q.bz - z.z); if (d < bd && (d < 2.5 || losLine(z.x, z.y + 0.6, z.z, q.bx - q.nx * 0.3, q.gy0 + 0.6, q.bz - q.nz * 0.3))){ bd = d; p = q; } }
+  if (!p){
+    // uma pilha grande por perto atrai: contorna a casa para se juntar a ela
+    let best = null, bn = 2;
+    for (const q of PILES) if (q.T === T && q.m.length >= bn && q.m.length < PILE_MAX && Math.hypot(q.bx - z.x, q.bz - z.z) < 18){ bn = q.m.length; best = q; }
+    if (best){ z.pgoal = {x: best.bx + best.nx * 1.3, z: best.bz + best.nz * 1.3}; return; }
+    if (PILES.filter(q => q.T === T).length >= 4) return;
+    const a = pileAnchor(T, z); if (!a || a.h < 1.3 || a.h > 40) return;
+    if (Math.hypot(a.bx - z.x, a.bz - z.z) > 3.8) return;
+    p = Object.assign({T, m:[], t:0, check:0}, a); PILES.push(p);
+  }
+  p.m.push(z); z.pile = p; z.pileY = z.y;
+}
+function pileFall(z, hard){
+  z.pile = null; if (z.y - groundAt(z.x, z.z, 0.25, z.y) > 0.5 && hard){ z.down = R(0.9, 2.0); z.bang = null; }
+}
+function pileCollapse(p, from){
+  const fall = p.m.splice(from || 0);
+  for (const z of fall) pileFall(z, true);
+  if (fall.length > 2 && Math.hypot(p.bx - P.x, p.bz - P.z) < 40) (sfx('zgroan', 0.5, p.bx, p.bz, R(1.2, 1.4)) || 0);
+  if (!p.m.length) PILES.splice(PILES.indexOf(p), 1);
+}
+function updatePiles(dt){
+  for (let i = PILES.length - 1; i >= 0; i--){
+    const p = PILES[i], T = p.T; p.t += dt;
+    // morto saiu da pilha: quem estava em cima cai
+    for (let k = 0; k < p.m.length; k++){ if (zombies.indexOf(p.m[k]) < 0 || p.m[k].pile !== p){ p.m.splice(k, 1); pileCollapse(p, k); break; } }
+    if (PILES.indexOf(p) < 0) continue;
+    // o alvo desceu, sumiu ou foi para longe: a pilha desmonta
+    const gone = !T || (T === P && P.dead) || T.car || T.y < p.gy0 + 1.2 || Math.hypot(T.x - p.ex, T.z - p.ez) > 16;
+    if (gone){ pileCollapse(p, 0); continue; }
+    // frenesi: os gemidos da pilha puxam os zumbis em volta, que vêm se amontoar também
+    if ((p.check -= dt) < 0){ p.check = 0.6;
+      for (const z of zombies){ if (z.rep || z.pile || z.climbO || z.state === 'chase' || z.crawl) continue;
+        const d = Math.hypot(z.x - p.bx, z.z - p.bz); if (d < 9 + p.m.length * 0.6){ z.state = 'chase'; z.aw = 1; z.lost = 0; z.tx = T.x; z.tz = T.z; z.search = false; } } }
+  }
+}
+// cada quadro de um zumbi da pilha (no anfitrião / jogo solo)
+function pileStep(z, T, dt){
+  z.anim += dt * 8;
+  if (z.climbO){   // se puxando por cima da borda
+    const c = z.climbO; c.t += dt; const k = Math.min(1, c.t / c.d), e = k * k * (3 - 2 * k);
+    z.x = c.x0 + (c.x1 - c.x0) * e; z.z = c.z0 + (c.z1 - c.z0) * e; z.y = c.y0 + (c.y1 - c.y0) * Math.min(1, k * 1.6) + Math.sin(k * Math.PI) * 0.35;
+    if (k >= 1){ z.climbO = null; z.y = c.y1; z.state = 'chase'; z.tx = T.x; z.tz = T.z; z.lost = 0; }
+    return 0.5;
+  }
+  const p = z.pile, i = p.m.indexOf(z); if (i < 0){ z.pile = null; return 0; }
+  z.state = 'chase'; z.lost = 0; z.aw = 1; z.tx = p.T.x; z.tz = p.T.z;
+  const [L, k, n] = pileSlot(i), tx = -p.nz, tz = p.nx, lat = (k - (n - 1) / 2) * 0.55 + Math.sin(z.anim * 0.7 + i) * 0.05;
+  const out = Math.max(0.28, 0.5 - L * 0.04), sx = p.bx + tx * lat - p.nx * (0.4 - out), sz = p.bz + tz * lat - p.nz * (0.4 - out), need = Math.max(0, p.h - PILE_REACH - Math.min(0.7, p.t * 0.03)), sy = p.gy0 + Math.min(L * PILE_LH, need + 0.05);
+  const dx = sx - z.x, dz = sz - z.z, dh = Math.hypot(dx, dz), sp = 2.6 * dt;
+  if (dh > sp){ z.x += dx / dh * sp; z.z += dz / dh * sp; } else { z.x = sx; z.z = sz; }
+  // sobe por cima dos outros aos trancos ("igual loucos")
+  const up = (dh < 0.6 ? 1.1 : 0.2) * dt * (0.6 + Math.abs(Math.sin(z.anim * 1.7 + i)) * 0.9);
+  if (z.y < sy) z.y = Math.min(sy, z.y + up); else z.y = Math.max(sy, z.y - dt * 2);
+  z.g.rotation.y = lerpAng(z.g.rotation.y, Math.atan2(-p.nx, -p.nz), dt * 8);
+  // o de cima alcançou a borda? escala e sai da pilha (precisa de pelo menos 3 zumbis amontoados)
+  if (p.m.length >= 3 && L * PILE_LH >= need - 0.01 && Math.abs(z.y - sy) < 0.05 && p.t > 1.2){
+    const ix = p.ex - p.nx * 0.55, iz = p.ez - p.nz * 0.55, iy = groundAt(ix, iz, 0.2, p.ey + 0.6);
+    p.m.splice(i, 1); z.pile = null; z.climbO = {t:0, d:0.85, x0:z.x, y0:z.y, z0:z.z, x1:ix, y1:iy, z1:iz};
+    sfx('zgroan', 0.55, z.x, z.z, R(1.2, 1.45)); p.t = 0.6;
+  }
+  return 0.6;
+}
+// pose de quem está amontoado / escalando: braços para cima arranhando, pernas se debatendo
+function pilePose(z){
+  const a = z.anim, s = Math.sin(a * 5.5), c = Math.cos(a * 6.1);
+  z.aL.rotation.x = -2.75 + Math.sin(a * 7.3) * 0.55; z.aR.rotation.x = -2.75 + Math.cos(a * 6.7) * 0.55;
+  z.lL.rotation.x = -0.7 + s * 0.6; z.lR.rotation.x = -0.7 - s * 0.6; z.kL.rotation.x = 1.0 + c * 0.4; z.kR.rotation.x = 1.0 - c * 0.4;
+  z.head.rotation.x = -0.55 + Math.sin(a * 3) * 0.15; z.head.rotation.z = Math.sin(a * 4.3) * 0.25;
+  z.g.rotation.z = Math.sin(a * 9) * 0.1; return 0.32;   // inclinação para a parede
+}
+
 // ================= HUD DO CELULAR: padrão + personalizável =================
 // Cada controle: h = lado de referência ('l' esquerda | 'r' direita), v = ('t' topo | 'b' baixo),
 // x, y = distância do centro até essas bordas e s = diâmetro, tudo em "u" = menor lado da tela.
@@ -4314,7 +4465,7 @@ function netStart(role, code, name){
   addEventListener('beforeunload', () => netSend({t:'bye'}));
   netHud();
 }
-function netStop(){ if (NET.tr){ netSend({t:'bye'}); NET.tr.close(); } NET.tr = null; NET.on = false; NET.ready = false; for (const p of NET.peers.values()) netDropModel(p); NET.peers.clear(); netHud(); }
+function netStop(){ if (NET.myRoom){ Object.assign(CFG, NET.myRoom); NET.myRoom = null; } if (NET.tr){ netSend({t:'bye'}); NET.tr.close(); } NET.tr = null; NET.on = false; NET.ready = false; for (const p of NET.peers.values()) netDropModel(p); NET.peers.clear(); netHud(); }
 
 // ---------- mensagens ----------
 function netOnMsg(m){
@@ -4323,6 +4474,7 @@ function netOnMsg(m){
   const t = m.t;
   if (t === 'hi'){ if (NET.role === 'host' && NET.ready) netWelcome(m.f); return; }
   if (t === 'wel'){ if (NET.role === 'join' && !NET.ready && !NET.joining) netJoinWorld(m); return; }
+  if (t === 'o'){ if (NET.role === 'join' && (!NET.hostId || m.f === NET.hostId)) netApplyOpts(m.o, true); return; }
   if (t === 'bye'){ const p = NET.peers.get(m.f); if (p) netPeerGone(p); return; }
   if (!NET.ready) return;
   if (t === 'p') return netOnState(m);
@@ -4331,8 +4483,15 @@ function netOnMsg(m){
   if (t === 'e') return netApplyEnts(m.e);
   if (t === 'c') return netApplyConts(m.c);
 }
+function netRoomOpts(){ const o = {}; for (const k of ROOM_KEYS) o[k] = CFG[k]; return o; }
+function netApplyOpts(o, say){
+  if (!o) return; if (!NET.myRoom){ NET.myRoom = {}; for (const k of ROOM_KEYS) NET.myRoom[k] = CFG[k]; }
+  let ch = false; for (const k of ROOM_KEYS) if (o[k] !== undefined && CFG[k] !== o[k]){ CFG[k] = o[k]; ch = true; }
+  if (ch && say && NET.ready) log('O anfitrião mudou as opções da sala.', '#9fd4ff');
+  if (ch && panel === 'cfg' && cfgTab === ROOM_TAB) renderCfg();
+}
 function netWelcome(to){
-  netSend({t:'wel', to, seed:NET.seed, map:SMALL ? 'p' : 'g', gm:gameMin, x:r2(P.x), y:r2(P.y), z:r2(P.z), rn:rainOn ? 1 : 0,
+  netSend({t:'wel', to, o:netRoomOpts(), seed:NET.seed, map:SMALL ? 'p' : 'g', gm:gameMin, x:r2(P.x), y:r2(P.y), z:r2(P.z), rn:rainOn ? 1 : 0,
     e:[...NET.entChanged.entries()].map(([i, v]) => [i, v[0], v[1]]), c:[...NET.contChanged.entries()].map(([i, v]) => [i, v[0], v[1]])});
 }
 function netJoinWorld(w){
@@ -4341,6 +4500,7 @@ function netJoinWorld(w){
     const u = new URL(location.href); u.searchParams.set('sala', NET.code); u.searchParams.set('mapa', w.map); u.searchParams.set('nome', NET.name); u.searchParams.set('auto', '1');
     mpMsg('Ajustando o mapa ao do anfitrião...'); location.href = u.toString(); return;
   }
+  netApplyOpts(w.o, false);
   NET.joining = true; NEWGAME = false; NET.seed = w.seed; NET.hostId = w.f; NET.lastHost = performance.now();
   mpMsg('Sala encontrada! Gerando a cidade...');
   setTimeout(() => {
@@ -4385,7 +4545,7 @@ function netZombieSnap(){
   cand.sort((a, b) => a[0] - b[0]);
   for (let k = 0; k < Math.min(cand.length, 110); k++){
     const z = cand[k][1]; if (!z.nid) continue;
-    const fl = (z.state === 'chase' ? 1 : 0) | (z.down > 0 ? 2 : 0) | (z.getUp > 0 ? 4 : 0) | (z.crawl ? 8 : 0) | (z.lunge > 0 ? 16 : 0) | (z.search ? 32 : 0) | (z.state === 'investigate' ? 64 : 0);
+    const fl = (z.state === 'chase' ? 1 : 0) | (z.down > 0 ? 2 : 0) | (z.getUp > 0 ? 4 : 0) | (z.crawl ? 8 : 0) | (z.lunge > 0 ? 16 : 0) | (z.search ? 32 : 0) | (z.state === 'investigate' ? 64 : 0) | (z.pile || z.climbO ? 128 : 0);
     const lm = (z.aL.visible ? 0 : 1) | (z.aR.visible ? 0 : 2) | (z.lL.visible ? 0 : 4) | (z.lR.visible ? 0 : 8) | (z.head.visible ? 0 : 16);
     out.push(z.nid, ZKIND.indexOf(z.kind), z.seed, Math.round(z.x * 100), Math.round(z.y * 100), Math.round(z.z * 100), Math.round(z.g.rotation.y * 100), Math.round((z.netSpd || 0) * 10), fl, lm);
   }
@@ -4433,7 +4593,7 @@ function netRepZ(z, dt){
   const s = z.net; if (!s) return 0;
   const dx = s.x - z.x, dz = s.z - z.z, d = Math.hypot(dx, dz);
   if (d > 4){ z.x = s.x; z.z = s.z; } else { const k = Math.min(1, dt * 9); z.x += dx * k; z.z += dz * k; }
-  if (Math.abs(s.y - z.y) > 0.6) z.y = s.y;
+  if (s.fl & 128) z.y += (s.y - z.y) * Math.min(1, dt * 9); else if (Math.abs(s.y - z.y) > 0.6) z.y = s.y;
   z.g.rotation.y = lerpAng(z.g.rotation.y, s.ry, dt * 10);
   z.state = s.fl & 1 ? 'chase' : s.fl & 64 ? 'investigate' : 'wander'; z.search = !!(s.fl & 32);
   z.down = s.fl & 2 ? 1 : 0; z.getUp = s.fl & 4 ? 0.35 : 0; z.crawl = !!(s.fl & 8) || z.crawl;
@@ -4581,6 +4741,7 @@ function netTick(dt){
   if (NET.role === 'join' && (NET.hits.length || NET.sevs.length || NET.svs.length)){ netSend({t:'h', to:NET.hostId, h:NET.hits, s:NET.sevs, v:NET.svs}); NET.hits = []; NET.sevs = []; NET.svs = []; }
   if (NET.role === 'host') for (const z of zombies){ const lx = z.nlx === undefined ? z.x : z.nlx, lz = z.nlz === undefined ? z.z : z.nlz; z.netSpd = (z.netSpd || 0) * 0.8 + Math.hypot(z.x - lx, z.z - lz) / Math.max(dt, 1e-3) * 0.2; z.nlx = z.x; z.nlz = z.z; }
   NET.sendT -= dt; if (NET.sendT <= 0){ NET.sendT = NET_RATE; netSend(netMyState()); }
+  if (NET.role === 'host' && (NET.optT = (NET.optT || 0) - dt) <= 0){ NET.optT = 8; netSend({t:'o', o:netRoomOpts()}); }
   NET.entT -= dt; if (NET.entT <= 0){ NET.entT = 0.25; netScanEnts(); }
   NET.contT -= dt; if (NET.contT <= 0){ NET.contT = 0.5; netScanConts(); }
   if (NET.role === 'join' && NET.hostId && performance.now() - NET.lastHost > 9000){ const h = NET.peers.get(NET.hostId); if (h) netPeerGone(h); else { NET.role = 'solo'; for (const z of NET.rz.values()){ z.rep = false; z.nid = 0; } NET.rz.clear(); } }
@@ -4588,7 +4749,7 @@ function netTick(dt){
 }
 // morto no multijogador: o mundo continua (os zumbis do anfitrião não param)
 function netDeadTick(dt){
-  gameMin += dt * 2 / CFG.dayLen; updateEnv();
+  tickClock(dt); updateEnv();
   if (NET.role === 'host'){ updateZombies(dt); updateHordes(dt); }
   else updateZombies(dt);
   netTick(dt);
@@ -4677,14 +4838,25 @@ function mpJoin(codeArg){
 function netHud(){
   let el = $('#netHud');
   if (!el){ el = document.createElement('div'); el.id = 'netHud'; if (isTouch) el.className = 'mob'; document.body.appendChild(el); }
-  if (!NET.on || !NET.ready){ el.style.display = 'none'; return; }
+  if (!NET.on || !NET.ready){ el.style.display = 'none'; const pn = $('#pauseNet'); if (pn){ pn.style.display = 'none'; pn.dataset.k = ''; } return; }
   const ppl = [NET.name + ' (você)'].concat([...NET.peers.values()].map(p => p.name + (p.id === NET.hostId ? ' ★' : '') + (p.st && p.st.fl & 32 ? ' ☠' : '')));
   const dot = NET.conn === 'ok' ? '#5fe07a' : NET.conn === 'off' ? '#e0b05f' : '#e05f5f';
   el.style.display = 'block';
-  el.innerHTML = `<span style="color:${dot}">●</span> Sala <b>${NET.code}</b> · ${ppl.length} jogador${ppl.length > 1 ? 'es' : ''}${NET.role === 'host' && !isTouch ? ' · você é o anfitrião' : NET.role === 'host' ? ' ★' : ''}${NET.conn !== 'ok' ? ' · <span style="color:#e0b05f">reconectando…</span>' : ''}<br><small>${ppl.map(x => x.replace(/</g, '&lt;')).join(' · ')}</small> <button class="btn s" id="netInv" style="pointer-events:auto;margin-left:6px">CONVIDAR</button>`;
-  $('#netInv').onclick = e => { e.stopPropagation(); const u = location.origin + location.pathname + '?sala=' + NET.code;
-    const done = () => { $('#netInv').textContent = 'LINK COPIADO!'; setTimeout(() => { const b = $('#netInv'); if (b) b.textContent = 'CONVIDAR'; }, 1800); };
-    if (navigator.clipboard) navigator.clipboard.writeText(u).then(done, () => prompt('Copie o link:', u)); else prompt('Copie o link:', u); };
+  el.innerHTML = `<span style="color:${dot}">●</span> Sala <b>${NET.code}</b> · ${ppl.length} jogador${ppl.length > 1 ? 'es' : ''}${NET.role === 'host' && !isTouch ? ' · você é o anfitrião' : NET.role === 'host' ? ' ★' : ''}${NET.conn !== 'ok' ? ' · <span style="color:#e0b05f">reconectando…</span>' : ''}<br><small>${ppl.map(x => x.replace(/</g, '&lt;')).join(' · ')}</small> ${isTouch ? '<button class="btn s" id="netInv" style="pointer-events:auto;margin-left:6px">CONVIDAR</button>' : '<small style="color:#e3b55b;margin-left:6px">Esc → convidar</small>'}`;
+  if ($('#netInv')) $('#netInv').onclick = e => { e.stopPropagation(); netCopyInvite($('#netInv'), 'CONVIDAR'); };
+  // tela de pausa (Esc): código, jogadores e o botão de convite, com o mouse livre
+  const pn = $('#pauseNet');
+  if (pn){ pn.style.display = 'block'; const key = NET.code + '|' + ppl.join('|') + '|' + NET.conn;
+    if (pn.dataset.k !== key){ pn.dataset.k = key;
+      pn.innerHTML = `<div style="font-size:13px;color:#b8b0a0">SALA</div><div style="font-size:34px;font-weight:bold;letter-spacing:8px;color:#f0e6d0">${NET.code}</div><div style="font-size:13px;margin:4px 0 8px">${ppl.map(x => x.replace(/</g, '&lt;')).join(' · ')}</div><button class="btn s" id="netInvP">COPIAR CONVITE</button><div style="font-size:12px;color:#9a917c;margin-top:6px">Mande o link (ou só o código ${NET.code}) para seus amigos.</div>`;
+      $('#netInvP').onclick = e => { e.stopPropagation(); netCopyInvite($('#netInvP'), 'COPIAR CONVITE'); }; } }
+}
+function netCopyInvite(btn, label){
+  const u = location.origin + location.pathname + '?sala=' + NET.code;
+  const done = () => { btn.textContent = 'LINK COPIADO!'; setTimeout(() => { btn.textContent = label; }, 1800); };
+  const fallback = () => { const t = document.createElement('textarea'); t.value = u; document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch(e){} t.remove(); if (ok) done(); else prompt('Copie o link:', u); };
+  if (navigator.share && isTouch){ navigator.share({title:'Zona Morta', text:'Entra na minha sala do Zona Morta! Código ' + NET.code, url:u}).catch(() => {}); return; }
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(u).then(done, fallback); else fallback();
 }
 // ---------- sair para o menu ----------
 let NEWGAME = false;
