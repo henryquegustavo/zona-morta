@@ -1060,7 +1060,7 @@ function buildBosque(bx, bz){
 function buildHighway(zc, sg){
   const L = 40, conn = [-120, 0, 120].filter(x => x > -TOWN && x < TOWN);
   for (let x = WX1 + L / 2; x < WX2; x += L){
-    pushGeo(chunkOf(x, zc), GB5, x, 0.012, zc, L + 0.2, 0.024, 13, 0x333336, 0, 0, 0);
+    pushGeo(chunkOf(x, zc), GB5, x, 0.012, zc, L + 0.2, 0.024, 13, 0x434347, 0, 0, 0);
     for (let q = x - L / 2 + 3; q < x + L / 2; q += 7){ pushGeo(chunkOf(q, zc), GB5, q, 0.03, zc - 3.2, 3, 0.01, 0.15, 0xe8e8e0, 0, 0, 0); pushGeo(chunkOf(q, zc), GB5, q, 0.03, zc + 3.2, 3, 0.01, 0.15, 0xe8e8e0, 0, 0, 0); }
     pushGeo(chunkOf(x, zc), GB5, x, 0.03, zc - 0.12, L, 0.01, 0.1, 0xd8b830, 0, 0, 0); pushGeo(chunkOf(x, zc), GB5, x, 0.03, zc + 0.12, L, 0.01, 0.1, 0xd8b830, 0, 0, 0);
     for (const side of [-1, 1]){
@@ -1293,7 +1293,7 @@ function buildRoads(){
       const mx = hor ? m : r, mz = hor ? r : m;
       if (inParkArea(mx, mz)) continue;
       const L = 38, sx = hor ? L : 8, sz = hor ? 8 : L;
-      pushGeo(chunkOf(mx, mz), GB5, mx, 0.01, mz, sx, 0.02, sz, 0x38383a, 0, 0, 0);
+      pushGeo(chunkOf(mx, mz), GB5, mx, 0.01, mz, sx, 0.02, sz, 0x434347, 0, 0, 0);
       roadSegs.push({x1:mx - sx / 2, x2:mx + sx / 2, z1:mz - sz / 2, z2:mz + sz / 2});
       for (let q = a + 6; q < b - 5; q += 6) pushGeo(chunkOf(hor ? q : r, hor ? r : q), GB5, hor ? q : r, 0.025, hor ? r : q, hor ? 2.4 : 0.15, 0.01, hor ? 0.15 : 2.4, 0xb8a85a, 0, 0, 0);
       for (const sd of [-1, 1]){
@@ -1656,13 +1656,14 @@ function buildCityTerrain(){
 }
 function buildRoadMeshes(){
   const pos = [], col = [], C = new THREE.Color();
-  const tri = (a, b, c, hex) => { C.setHex(hex); for (const v of [a, b, c]){ pos.push(v[0], v[1], v[2]); col.push(C.r, C.g, C.b); } };
+  // vira o triângulo para cima (senão a luz pega pelo lado de baixo e o asfalto fica quase preto)
+  const tri = (a, b, c, hex) => { C.setHex(hex); if ((b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]) < 0){ const t = b; b = c; c = t; } for (const v of [a, b, c]){ pos.push(v[0], v[1], v[2]); col.push(C.r, C.g, C.b); } };
   const quad = (a, b, c, d, hex) => { tri(a, b, c, hex); tri(a, c, d, hex); };
   for (const e of REDGES){
     const P2 = e.pts, m = P2.length, lift = 0.05 + (e.id % 4) * 0.004;
     const at = (s, off, dy) => { const p = P2[s], nx = -p.tz, nz = p.tx; return [p.x + nx * off, p.h + lift + dy, p.z + nz * off]; };
     for (let s = 0; s < m - 1; s++){
-      const asf = (s * 7 + e.id) % 3 ? 0x38383a : 0x3a3a3c;
+      const asf = (s * 7 + e.id) % 3 ? 0x434347 : 0x46464a;
       quad(at(s, -e.hw, 0), at(s + 1, -e.hw, 0), at(s + 1, e.hw, 0), at(s, e.hw, 0), asf);
       if (s > 9 && s < m - 10){
         for (const sd of [-1, 1]){
@@ -1679,7 +1680,7 @@ function buildRoadMeshes(){
   }
   for (const n of RNODES){
     if (n.end || !n.edges.length) continue; const r = Math.max(...n.edges.map(e => e.hw)) + 1.2, y = n.h + 0.075;
-    for (let k = 0; k < 20; k++){ const a0 = k / 20 * Math.PI * 2, a1 = (k + 1) / 20 * Math.PI * 2; tri([n.x, y, n.z], [n.x + Math.cos(a0) * r, y, n.z + Math.sin(a0) * r], [n.x + Math.cos(a1) * r, y, n.z + Math.sin(a1) * r], 0x39393b); }
+    for (let k = 0; k < 20; k++){ const a0 = k / 20 * Math.PI * 2, a1 = (k + 1) / 20 * Math.PI * 2; tri([n.x, y, n.z], [n.x + Math.cos(a0) * r, y, n.z + Math.sin(a0) * r], [n.x + Math.cos(a1) * r, y, n.z + Math.sin(a1) * r], 0x444448); }
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   const nrm = new Float32Array(pos.length); for (let i = 1; i < nrm.length; i += 3) nrm[i] = 1; g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
@@ -1784,7 +1785,7 @@ function buildCondo(){
   boxZ(3.4, 5.9, 0, 2.6, D / 2 - 3.1, D / 2 - 0.4, 0xe8e0d0, true, true); boxZ(3.3, 6.2, 2.6, 2.8, D / 2 - 3.2, D / 2 - 0.3, 0x5a5a5a, false);
   S(GB, 3.36, 1.5, D / 2 - 1.75, 0.04, 0.9, 1.8, 0x5a7a90); addContainer(4.75, D / 2 - 1.75, 'armario', 2.2);
   S(GB, -1.2, 1.0, D / 2 + 0.25, 4.6, 0.1, 0.1, 0xd03030); S(GB, -3.4, 0.5, D / 2 + 0.25, 0.2, 1.0, 0.2, 0x3a3a3a);
-  boxZ(-W / 2 + 0.8, W / 2 - 0.8, 0, 0.04, -3, 3, 0x38383a, false); boxZ(-3, 3, 0, 0.04, 3, D / 2, 0x38383a, false);
+  boxZ(-W / 2 + 0.8, W / 2 - 0.8, 0, 0.04, -3, 3, 0x434347, false); boxZ(-3, 3, 0, 0.04, 3, D / 2, 0x434347, false);
   makeSign('RESIDENCIAL ' + pick(PNAMES), 0x2a4a6a, 0, 3.3, D / 2 + 0.2, 6.5, 0);
   const seed = RI(1, 2e9), lw = 11.4, same = fn => { const old = Math.random; Math.random = mulberry(seed); try { fn(); } finally { Math.random = old; } };
   for (let k = 0; k < 3; k++){ const a = -W / 2 + 0.9 + k * lw; same(() => buildLotHouse(a, a + lw, -12.4, 1, {leftWall:k === 0, noGarage:true})); }
