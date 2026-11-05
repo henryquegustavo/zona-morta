@@ -1176,9 +1176,9 @@ function buildHighway(zc, sg){
   S(GB, 17.2, 2.0, zc - sg * 7.4, 0.15, 4, 0.15, 0x6a6a6a); S(GB, 22.8, 2.0, zc - sg * 7.4, 0.15, 4, 0.15, 0x6a6a6a);
 }
 // ---- serra, cavernas e zona rural ----
-let CAVES = [], FARMS = [], LAKE = null, FPATHS = [], FIELDS = [];
+let CAVEP = [], CAVES = [], FARMS = [], LAKE = null, FPATHS = [], FIELDS = [];
 function planWild(){
-  flats = []; CAVES = []; FARMS = [];
+  flats = []; CAVES = []; CAVEP = []; FARMS = [];
   const cx = SMALL ? [-130, 120] : [-270, -150, 140, 260];
   for (const x of cx){ const c = {x:x + R(-15, 15), z:NB - 17}; CAVES.push(c); flats.push({x:c.x, z:c.z, hw:13, hd:11, y:0}); }
   flats.push({x:0, z:WZ1 + 18, hw:8, hd:8, y:(NB - (WZ1 + 18)) * 0.16});
@@ -1233,7 +1233,27 @@ function buildCave(cx, cz){
   contBox(cx - 0.4, cx + 0.4, 0, 0.5, zb + 4, zb + 4.6, 0x5a4a30, 'caverna', 0);
   S(GCY, cx + 3, 0.1, zb + 4.5, 1.2, 0.15, 1.2, 0x2a2a2a); cookSpots.push({x:cx + 3, z:zb + 4.5, y:0}); for (let k = 0; k < 5; k++) S(GB, cx + R(-6, 6), 0.08, zb + R(1, 8), R(0.2, 0.5), 0.08, 0.1, 0xe8e2d0, R(0, 3));
   houses.push({x1, x2, z1:zb, z2:zf, cx, cz, doorX:cx, frontZ:zf, side:1, kind:'caverna', levels:[0], roofY:H + 3, ceilY:H, fh:H, flights:[]});
-  makeSign('CAVERNA', 0x3a3026, cx, 3.6, zf + 0.7, 2.4, 0);
+  // por fora: um morro de pedra (pedregulhos) cobrindo tudo, com só a boca da caverna aberta na frente
+  const RC2 = [0x5a5650, 0x4e4a45, 0x66605a, 0x544e48, 0x4a4640, 0x5e5a52], rx = w / 2 + 2.6, rz = d / 2 + 2.4, ry = H + 2.4, open = 3.3;
+  const inside = (ax1, ax2, az1, az2) => ax2 > x1 - 0.2 && ax1 < x2 + 0.2 && az2 > zb - 0.2 && az1 < zf + 0.2;
+  for (const el of [0, 0.22, 0.45, 0.68, 0.88]){
+    const n = Math.round(26 * Math.cos(el * Math.PI / 2) + 5);
+    for (let i = 0; i < n; i++){
+      const a = (i + R(-0.3, 0.3)) / n * Math.PI * 2, ce = Math.cos(el * Math.PI / 2), x = cx + Math.cos(a) * rx * ce, z = cz + Math.sin(a) * rz * ce, y = ry * Math.sin(el * Math.PI / 2);
+      if (Math.sin(a) > 0.45 && Math.abs(x - cx) < open + 1.2 && y < H + 0.2) continue;   // boca da caverna
+      const sz = R(3.2, 5.8) * (1 - el * 0.35), col = pick(RC2);
+      S(GIC, x, y + sz * 0.15, z, sz, sz * R(0.55, 0.85), sz * R(0.8, 1.1), col, R(0, 6.28));
+      if (el < 0.3){ const hx = sz * 0.42, hz = sz * 0.42; if (!inside(x - hx, x + hx, z - hz, z + hz)) addCol({x1:x - hx, x2:x + hx, z1:z - hz, z2:z + hz, h:y + sz * 0.5}); }
+    }
+  }
+  // arco de pedra em cima da entrada e pedras soltas na frente
+  for (let k = -2; k <= 2; k++) S(GIC, cx + k * 1.6, H + R(0.2, 0.9) + Math.abs(k) * 0.1, zf + R(0, 0.8), R(2.2, 3.2), R(1.3, 2), R(1.8, 2.6), pick(RC2), R(0, 6.28));
+  for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) S(GIC, cx + sd * (open + R(0, 1.4)), k * 1.3 + 0.8, zf + R(-0.3, 0.9), R(1.8, 2.8), R(1.4, 2.2), R(1.6, 2.4), pick(RC2), R(0, 6.28));
+  for (let k = 0; k < 10; k++) S(GIC, cx + R(-9, 9), 0.2, zf + R(1, 6), R(0.4, 1.2), R(0.3, 0.8), R(0.4, 1.1), pick(RC2), R(0, 6.28));
+  // por dentro: paredes irregulares
+  for (let k = 0; k < 22; k++){ const side = RI(0, 2), t = Math.random(); const px = side === 0 ? x1 + t * (x2 - x1) : side === 1 ? x1 + 0.2 : x2 - 0.2, pz = side === 0 ? zb + 0.3 : zb + t * (zf - 6 - zb);
+    S(GIC, px, R(0.5, H - 0.6), pz, R(1.0, 2.2), R(0.8, 1.8), R(0.8, 1.6), pick(RC2), R(0, 6.28)); }
+  RUINS.push && CAVEP.push({x:cx, z:zf + 2});
 }
 function fenceRect(x1, x2, z1, z2, gate){
   const post = (x, z) => S(GB, x, 0.55, z, 0.12, 1.1, 0.12, 0x5a3e26);
@@ -2149,14 +2169,15 @@ function buildGrass(){
   const scatter = (n, fx, fz, ok, k) => { for (let i = 0; i < n; i++){ const x = fx(), z = fz(); if (!okAll(x, z) || (ok && !ok(x, z))) continue; const y = yAt(x, z); if (hitAny(x, z, 0.15, y + 0.05)) continue; put(x, z, y, k); } };
   const n = SMALL ? 0.45 : 1;
   // pelos lugares abandonados e estações: bem mais mato
-  for (const r of RUINS) scatter(260 * n, () => r.x + R(-20, 20), () => r.z + R(-20, 20), null, 1);
+  for (const r of RUINS) scatter(420 * n, () => r.x + R(-22, 22), () => r.z + R(-22, 22), null, 1);
+  for (const c of CAVEP) scatter(160 * n, () => c.x + R(-12, 12), () => c.z + R(0, 10), null, 0.7);
   // beira dos trilhos (e brita no meio)
-  for (const r of RAILS) for (let s = r.a; s < r.b; s += 2.5 / n){ const o = (Math.random() < 0.5 ? -1 : 1) * R(0.3, 4), x = r.h ? s : r.c + o, z = r.h ? r.c + o : s; if (railH(r, s) > 0.3) continue; if (okAll(x, z)) put(x, z, yAt(x, z), 0.8); }
+  for (const r of RAILS) for (let s = r.a; s < r.b; s += 1.4 / n){ const o = (Math.random() < 0.5 ? -1 : 1) * R(0.3, 4), x = r.h ? s : r.c + o, z = r.h ? r.c + o : s; if (railH(r, s) > 0.3) continue; if (okAll(x, z)) put(x, z, yAt(x, z), 0.8); }
   // cidade (terrenos, beira de muro e calçada), zona rural, serra e floresta
-  scatter(9000 * n, () => R(-TOWN, TOWN), () => R(NB + 8, SB - 8), okTown, 0.6);
-  scatter(9000 * n, () => R(WX1 + 5, WX2 - 5), () => R(SB + 6, WZ2 - 6), (x, z) => !FIELDS.some(f => x > f.box.x1 && x < f.box.x2 && z > f.box.z1 && z < f.box.z2) && !FPATHS.some(r => x > r.x1 - 0.5 && x < r.x2 + 0.5 && z > r.z1 - 0.5 && z < r.z2 + 0.5) && Math.abs(z - (SB + 9)) > 4, 0.5);
-  scatter(4000 * n, () => R(WX1 + 5, WX2 - 5), () => R(WZ1 + 6, NB - 6), null, 0.5);
-  scatter(5000 * n, () => (Math.random() < 0.5 ? -1 : 1) * R(FOREST_X + 3, WX2 - 4), () => R(NB, SB), (x, z) => Math.abs(z) > 3, 0.3);
+  scatter(17000 * n, () => R(-TOWN, TOWN), () => R(NB + 8, SB - 8), okTown, 0.6);
+  scatter(17000 * n, () => R(WX1 + 5, WX2 - 5), () => R(SB + 6, WZ2 - 6), (x, z) => !FIELDS.some(f => x > f.box.x1 && x < f.box.x2 && z > f.box.z1 && z < f.box.z2) && !FPATHS.some(r => x > r.x1 - 0.5 && x < r.x2 + 0.5 && z > r.z1 - 0.5 && z < r.z2 + 0.5) && Math.abs(z - (SB + 9)) > 4, 0.5);
+  scatter(8000 * n, () => R(WX1 + 5, WX2 - 5), () => R(WZ1 + 6, NB - 6), null, 0.5);
+  scatter(9000 * n, () => (Math.random() < 0.5 ? -1 : 1) * R(FOREST_X + 3, WX2 - 4), () => R(NB, SB), (x, z) => Math.abs(z) > 3, 0.3);
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), Sc = new THREE.Vector3(), C = new THREE.Color();
   for (const t of tiles.values()){
     const m = new THREE.InstancedMesh(geo, mat, t.a.length);
@@ -4944,7 +4965,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-6';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-7';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
