@@ -567,6 +567,7 @@ function hitAny(x, z, r, feet){
         if (dx * dx + dz * dz < r * r) return true;
       }
     }
+  if (TRAIN){ const c = trainCarAt(x, z, r); if (c && feet < c.y + c.solid - 0.55 && head > c.y + 0.3) return true; }
   for (let n = 0; n < VEH.length; n++){
     const v = VEH[n]; if (v === CURV || Math.abs(x - v.x) > 2.6 + r || Math.abs(z - v.z) > 2.6 + r || feet > v.y + 1.45 || head < v.y + 0.2) continue;
     const dx = x - v.x, dz = z - v.z, c = Math.cos(v.yaw), sn = Math.sin(v.yaw), lf = dx * sn + dz * c, lr = dx * c - dz * sn;
@@ -587,6 +588,8 @@ function groundAt(x, z, r, feet){
       if (a) for (const c of a){ if (c.off || c.nt || c.h > lim || c.h <= g || x + r < c.x1 || x - r > c.x2 || z + r < c.z1 || z - r > c.z2) continue; g = c.h; }
       if (b) for (const p of b){ if (p.top > lim || p.top <= g || x + r <= p.x1 || x - r >= p.x2 || z + r <= p.z1 || z - r >= p.z2) continue; g = p.top; }
     }
+  // dá para ficar em cima dos vagões do trem
+  if (TRAIN){ const c = trainCarAt(x, z, r * 0.5); if (c){ const t = c.y + c.top; if (t <= lim && t > g) g = t; } }
   // dá para subir no capô e no teto dos carros
   if (!GNOVEH) for (let n = 0; n < VEH.length; n++){ const v = VEH[n]; if (v === CURV || Math.abs(x - v.x) > 2.4 + r || Math.abs(z - v.z) > 2.4 + r || v.y + 0.95 > lim || v.y + 1.56 <= g) continue;
     const dx = x - v.x, dz = z - v.z, c = Math.cos(v.yaw), sn = Math.sin(v.yaw), lr = dx * c - dz * sn, lf = dx * sn + dz * c;
@@ -1942,13 +1945,13 @@ function buildWorld(){
   buildWild(); buildRuins();
   for (const h of houses) if (h.dpx === undefined) doorInfo(h);
   buildBGrid();
-  spawnVehicles(); spawnPropCars();
+  spawnVehicles(); spawnPropCars(); buildTrain(); if (CFG.quality !== 'baixa') buildGrass();
   buildMapBG();
   finalizeStatic();
   finalizeEnts();
 }
 // ================= FERROVIA, VIADUTO, LUGARES DESTRUÍDOS =================
-let RAILS = [], WRECKS = [], RUINS = [], RAIL_RZ = 0, RAIL_RX = 0;
+let RAILS = [], WRECKS = [], RUINS = [], RAIL_RZ = 0, RAIL_RX = 0, VIADUCT = null;
 const onRail = (x, z, pad) => { for (const r of RAILS){ if (r.h ? (Math.abs(z - r.c) < 2 + pad && x > r.a - pad && x < r.b + pad) : (Math.abs(x - r.c) < 2 + pad && z > r.a - pad && z < r.b + pad)) return true; } return false; };
 // altura do trilho: a linha leste sobe num viaduto por cima da estrada de terra da floresta
 function railH(r, s){
@@ -1989,11 +1992,12 @@ function buildRails(){
       for (let s = r.a; s < r.b; s += 2){
         const sm = s + 1, y = railH(r, sm), x = r.c; if (y <= 0.05) continue;
         const deck = y >= 5.49;
-        if (!deck) addBox(x, y / 2, sm, 3.8, y, 2.02, 0x7a7068, true);
-        else { addBox(x, y - 0.35, sm, 3.8, 0.7, 2.02, 0x8a8a84, true); if (Math.round(sm) % 10 === 0 && Math.abs(sm) > 4) for (const o of [-1.3, 1.3]) addBox(x + o, (y - 0.7) / 2, sm, 0.6, y - 0.7, 0.6, 0x7a7a74, true); }
-        for (const o of [-1.85, 1.85]) addBox(x + o, y + 0.45, sm, 0.12, 0.9, 2.02, 0x9a9a92, true);
+        if (!deck){ S(GB, x, y / 2, sm, 3.8, y, 2.02, 0x7a7068); for (let k = 0; k < 4; k++){ const zz = s + k * 0.5 + 0.25, yy = railH(r, zz); addPlat({x1:x - 1.8, x2:x + 1.8, z1:zz - 0.26, z2:zz + 0.26, top:yy}); }
+          for (const o of [-1.9, 1.9]) addBox(x + o, (y + 0.9) / 2, sm, 0.14, y + 0.9, 2.02, 0x8a8278, true); }
+        else { addBox(x, y - 0.35, sm, 3.8, 0.7, 2.02, 0x8a8a84, true); if (Math.round(sm) % 10 === 0 && Math.abs(sm) > 4) for (const o of [-1.3, 1.3]) addBox(x + o, (y - 0.7) / 2, sm, 0.6, y - 0.7, 0.6, 0x7a7a74, true);
+          for (const o of [-1.85, 1.85]) addBox(x + o, y + 0.45, sm, 0.12, 0.9, 2.02, 0x9a9a92, true); }
       }
-      makeSign('VIADUTO DA SERRA', 0x3a3a3a, RX + 2.2, 4.6, 0, 3.6, Math.PI / 2);
+      makeSign('VIADUTO DA SERRA', 0x3a3a3a, RX + 2.2, 4.6, 0, 3.6, Math.PI / 2); VIADUCT = {x:RX, L:95};
     }
   }
   // passagens de nível (placa em X) onde a linha cruza estradas
@@ -2018,14 +2022,14 @@ function buildRails(){
   station(RX, SMALL ? -140 : -170, false, 'ESTAÇÃO DA SERRA', 1);
   station(-RX, SMALL ? 120 : 150, false, 'PARADA OESTE', -1);
   // trem abandonado e um vagão descarrilado na linha norte
-  { const x0 = R(-RX * 0.45, RX * 0.2), z = -RZ;
+  { const x0 = R(RX + 30, WX2 - 85), z = RZ;
     addBox(x0, 1.9, z, 14, 3.2, 3.0, 0x8a2a1a, true); addBox(x0 + 4.5, 3.9, z, 4.5, 0.9, 3.0, 0x6a1a10, true); S(GB, x0 - 7.05, 2.4, z, 0.1, 1.0, 2.2, 0xfff4c0);
     makeSign('RFFSA', 0x6a1a10, x0, 2.6, z - 1.52, 3, 0);
     let x = x0 + 8; for (let k = 0; k < 4; k++){ x += 13;
-      if (k === 2){ addBox(x + 1, 1.45, z + 3.8, 12, 2.9, 2.8, 0x4a3a2a, true); S(GB, x + 1, 0.02, z + 2.4, 6, 0.03, 4, 0x2a2420, 0.2); addContainer(x + 1, z + 5.6, 'vagao', 2.4); remains(x - 3, z + 6.5, 5); }
+      if (k === 2){ addBox(x + 1, 1.45, z - 3.8, 12, 2.9, 2.8, 0x4a3a2a, true); S(GB, x + 1, 0.02, z - 2.4, 6, 0.03, 4, 0x2a2420, 0.2); addContainer(x + 1, z - 5.6, 'vagao', 2.4); remains(x - 3, z - 6.5, 5, 0.03); }
       else { addBox(x, 1.75, z, 12, 2.8, 2.8, pick([0x5a4a3a, 0x3a4a5a, 0x6a5a3a]), true); addContainer(x, z + 2.2, 'vagao', 2.2); addContainer(x, z - 2.2, 'vagao', 2.2); }
     }
-    RUINS.push({x:x0 + 30, z:z + 10, nm:'TREM ABANDONADO'}); remains(x0 - 9, z + 3, 6);
+    RUINS.push({x:x0 + 30, z:z - 12, nm:'TREM ABANDONADO'}); remains(x0 - 9, z - 3, 6, 0.03);
   }
   // barreira militar na rodovia sul
   { const x = SMALL ? -150 : -210, z = HWY_S;
@@ -2043,6 +2047,122 @@ function buildRails(){
     for (let i = 0; i < (SMALL ? 6 : 9); i++) WRECKS.push({x:x + i * 4.4 + R(-1, 1), z:z + R(-4.5, 4.5), yaw:R(0, 6.28), col:pick([0x2a2420, 0x3a2a22, 0x4a3a30, 0x2e2a28])});
     for (let i = 0; i < 6; i++){ S(GB5, x + R(-4, 40), 0.03, z + R(-5, 5), R(3, 6), 0.02, R(2, 4), 0x151210, R(0, 3)); remains(x + R(-4, 40), z + R(-5.5, 5.5), RI(3, 6), 0.03); }
     RUINS.push({x:x + 18, z:z - 12, nm:'ENGAVETAMENTO'});
+  }
+}
+// ================= TREM QUE DÁ A VOLTA NA CIDADE =================
+let TRAIN = null;
+function trainPath(){
+  const RX = RAIL_RX, RZ = RAIL_RZ, CR = 14, segs = [];
+  const line = (x0, z0, x1, z1) => segs.push({t:'l', x0, z0, x1, z1, L:Math.hypot(x1 - x0, z1 - z0)});
+  const arc = (cx, cz, a0, a1) => segs.push({t:'a', cx, cz, a0, a1, L:Math.abs(a1 - a0) * CR});
+  line(-RX + CR, RZ, RX - CR, RZ); arc(RX - CR, RZ - CR, Math.PI / 2, 0);
+  line(RX, RZ - CR, RX, -RZ + CR); arc(RX - CR, -RZ + CR, 0, -Math.PI / 2);
+  line(RX - CR, -RZ, -RX + CR, -RZ); arc(-RX + CR, -RZ + CR, -Math.PI / 2, -Math.PI);
+  line(-RX, -RZ + CR, -RX, RZ - CR); arc(-RX + CR, RZ - CR, -Math.PI, -Math.PI * 1.5);
+  let L = 0; for (const s of segs){ s.s0 = L; L += s.L; }
+  return {segs, L, CR};
+}
+function trainAt(s){
+  const T = TRAIN, L = T.path.L; s = ((s % L) + L) % L; let g = T.path.segs[0];
+  for (const q of T.path.segs) if (s >= q.s0) g = q;
+  const u = s - g.s0; let x, z, dx, dz;
+  if (g.t === 'l'){ const k = u / g.L; x = g.x0 + (g.x1 - g.x0) * k; z = g.z0 + (g.z1 - g.z0) * k; dx = (g.x1 - g.x0) / g.L; dz = (g.z1 - g.z0) / g.L; }
+  else { const a = g.a0 + (g.a1 - g.a0) * (u / g.L), sg = Math.sign(g.a1 - g.a0), CR = T.path.CR; x = g.cx + Math.cos(a) * CR; z = g.cz + Math.sin(a) * CR; dx = -Math.sin(a) * sg; dz = Math.cos(a) * sg; }
+  const E = RAILS[2]; const y = Math.abs(x - RAIL_RX) < 0.5 ? railH(E, z) : 0;
+  return {x, z, y, yaw:Math.atan2(dx, dz)};
+}
+function buildTrain(){
+  const path = trainPath(), mat = new THREE.MeshLambertMaterial({vertexColors:true}), B = (x, y, z, sx, sy, sz, c) => [GB, x, y, z, sx, sy, sz, c, 0, 0];
+  const mk = parts => { const m = new THREE.Mesh(mergedGeo(parts), mat); scene.add(m); return m; };
+  const wheels = (L) => { const a = []; for (const k of [-L / 2 + 1.5, -L / 2 + 3, L / 2 - 3, L / 2 - 1.5]) for (const o of [-0.75, 0.75]) a.push(B(o, 0.45, k, 0.18, 0.7, 0.7, 0x202020)); return a; };
+  const loco = mk([B(0, 0.75, 0, 2.6, 0.5, 13, 0x2a2a2a), B(0, 2.1, -1.2, 2.7, 2.3, 10, 0x1f5a8a), B(0, 2.4, 4.6, 2.8, 2.9, 3.4, 0x1a4a72), B(0, 3.95, 4.6, 2.9, 0.2, 3.6, 0x123a5a),
+    B(0, 2.9, 6.32, 2.2, 0.9, 0.04, 0x9fb8c8), B(0.8, 1.5, 6.5, 0.35, 0.22, 0.05, 0xfff4c0), B(-0.8, 1.5, 6.5, 0.35, 0.22, 0.05, 0xfff4c0), B(0, 1.0, 6.6, 2.4, 0.3, 0.2, 0xd8b830), B(0, 3.35, -1.2, 2.2, 0.15, 9, 0x2a2a2a)].concat(wheels(13)));
+  const cars = [{m:loco, L:13, top:4.05, solid:4.05, loco:true}];
+  for (let i = 0; i < 3; i++){ const col = [0x7a3a22, 0x4a5a3a, 0x6a5a40][i];
+    cars.push({m:mk([B(0, 0.75, 0, 2.6, 0.5, 12, 0x2a2a2a), B(0, 1.15, 0, 2.9, 0.3, 12, col), B(1.42, 1.6, 0, 0.08, 0.6, 12, col), B(-1.42, 1.6, 0, 0.08, 0.6, 12, col), B(0, 1.6, 5.96, 2.9, 0.6, 0.08, col), B(0, 1.6, -5.96, 2.9, 0.6, 0.08, col)].concat(wheels(12))), L:12, top:1.3, solid:1.3}); }
+  const sts = [];   // paradas nas estações
+  const st = (x, z) => { let best = 0, bd = 1e9; for (let s = 0; s < path.L; s += 2){ const p = trainAtRaw(path, s); const d = Math.hypot(p.x - x, p.z - z); if (d < bd){ bd = d; best = s; } } sts.push(best); };
+  TRAIN = {path, cars, s:0, v:0, stop:15, sts, horn:0, gaps:[]};
+  let off = 0; for (const c of cars){ c.off = off + c.L / 2; off += c.L + 1.2; }
+  for (const r of RUINS) if (r.nm === 'ESTAÇÃO CENTRAL' || r.nm === 'ESTAÇÃO DA SERRA' || r.nm === 'PARADA OESTE') st(r.x, r.z);
+  TRAIN.sts.sort((a, b) => a - b); TRAIN.s = (TRAIN.sts[0] || 0) + cars[0].L / 2; placeTrain();
+}
+function trainAtRaw(path, s){ const t = TRAIN; TRAIN = {path}; const p = trainAt(s); TRAIN = t; return p; }
+function placeTrain(){
+  const T = TRAIN; for (const c of T.cars){ const p = trainAt(T.s - c.off + T.cars[0].L / 2), q = trainAt(T.s - c.off + T.cars[0].L / 2 - 4);
+    c.px = c.x; c.pz = c.z; c.pyaw = c.yaw; c.x = p.x; c.z = p.z; c.y = Math.max(p.y, q.y * 0) + 0; c.yaw = Math.atan2(p.x - q.x, p.z - q.z);
+    c.y = (p.y + q.y) / 2; c.m.position.set(c.x, c.y, c.z); c.m.rotation.set(-Math.atan2(p.y - q.y, 4), c.yaw, 0, 'YXZ'); if (c.px === undefined){ c.px = c.x; c.pz = c.z; c.pyaw = c.yaw; } }
+}
+// o carro do trem embaixo de um ponto (para ficar em cima, ser carregado e colidir)
+function trainCarAt(x, z, pad){
+  if (!TRAIN) return null;
+  for (const c of TRAIN.cars){ const dx = x - c.x, dz = z - c.z; if (Math.abs(dx) > c.L && Math.abs(dz) > c.L) continue; const cs = Math.cos(c.yaw), sn = Math.sin(c.yaw), lr = dx * cs - dz * sn, lf = dx * sn + dz * cs;
+    if (Math.abs(lr) < 1.45 + pad && Math.abs(lf) < c.L / 2 + pad) return c; }
+  return null;
+}
+function updateTrain(dt){
+  const T = TRAIN; if (!T) return;
+  const joiner = typeof NET !== 'undefined' && NET.on && NET.role === 'join';
+  if (joiner && T.net){ T.v += (T.net.v - T.v) * Math.min(1, dt * 3); T.s += T.v * dt; let d = T.net.s - T.s; const L = T.path.L; d = ((d % L) + L * 1.5) % L - L / 2; T.s += d * Math.min(1, dt * 2); }
+  else {
+    const L = T.path.L, ahead = s => { let best = 1e9; for (const q of T.sts){ let d = ((q + T.cars[0].L / 2 - T.s) % L + L) % L; if (d < best) best = d; } return best; };
+    if (T.stop > 0){ T.stop -= dt; T.v = 0; if (T.stop <= 0){ T.horn = 1; trainHorn(); } }
+    else { const d = ahead(); const vmax = 12; let tv = vmax; if (d < 45) tv = Math.max(1.2, vmax * d / 45); if (d < 0.6 && T.v < 2.5 && T.left > 30){ T.stop = 18; T.v = 0; T.left = 0; } T.v += clamp(tv - T.v, -3 * dt, 1.6 * dt); T.s += T.v * dt; T.left = (T.left || 0) + T.v * dt; }
+  }
+  placeTrain();
+  // atropela zumbis e empurra quem estiver no trilho
+  if (T.v > 2 && !joiner){
+    for (const z of zombies){ if (z.rep) continue; const c = trainCarAt(z.x, z.z, 0.3); if (c && z.y < c.y + c.solid - 0.6){ const dx = z.x - c.x, dz = z.z - c.z, d = Math.hypot(dx, dz) || 1; hitZombie(z, 400, dx / d, dz / d, 2, {force:3, crumple:true}); } }
+  }
+  if (T.v > 2 && !P.dead && !P.car){ const c = trainCarAt(P.x, P.z, 0.2); if (c && P.y < c.y + c.solid - 0.6 && (P.trainHit || 0) <= 0){ const sx = Math.cos(c.yaw), sz = -Math.sin(c.yaw), side = ((P.x - c.x) * sx + (P.z - c.z) * sz) >= 0 ? 1 : -1; P.x += sx * side * 2.2; P.z += sz * side * 2.2; P.vida -= 35; shake = 0.6; P.trainHit = 1.2; log('O trem te acertou!', '#ff8a7a'); } }
+  P.trainHit = Math.max(0, (P.trainHit || 0) - dt);
+  // apito e barulho perto
+  T.nT = (T.nT || 0) - dt; if (T.v > 3 && T.nT <= 0){ T.nT = 1.5; emitNoise(T.cars[0].x, T.cars[0].z, 25); }
+}
+function trainHorn(){ const c = TRAIN.cars[0], d = Math.hypot(c.x - P.x, c.z - P.z); if (d > 260) return; const v = Math.max(0.05, 0.35 * (1 - d / 260)); toneSnd(311, 311, 1.1, v, 'sawtooth'); toneSnd(370, 370, 1.1, v * 0.8, 'sawtooth'); }
+// quem está em cima de um vagão anda junto com ele
+function carryOnTrain(o){
+  const c = trainCarAt(o.x, o.z, 0.05); if (!c || Math.abs(o.y - (c.y + c.top)) > 0.3) return false;
+  const dyaw = c.yaw - c.pyaw, dx0 = o.x - c.px, dz0 = o.z - c.pz, cs = Math.cos(-dyaw), sn = Math.sin(-dyaw);
+  o.x = c.x + dx0 * cs - dz0 * sn; o.z = c.z + dx0 * sn + dz0 * cs; if (o === P) P.yaw += dyaw; return true;
+}
+// ================= MATINHO (tufos finos da altura da canela) =================
+let GRASS = [];
+function buildGrass(){
+  for (const t of GRASS) scene.remove(t.m); GRASS = [];
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
+  for (let i = 0; i < 26; i++){ const x = 6 + Math.random() * 52, h = 30 + Math.random() * 32, bend = (Math.random() - 0.5) * 18;
+    g.strokeStyle = `rgb(${120 + Math.random() * 60 | 0},${150 + Math.random() * 50 | 0},${70 + Math.random() * 30 | 0})`; g.lineWidth = 1.2 + Math.random() * 1.6; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x, 64); g.quadraticCurveTo(x + bend * 0.3, 64 - h * 0.5, x + bend, 64 - h); g.stroke(); }
+  const tex = new THREE.CanvasTexture(c);
+  const geo = new THREE.BufferGeometry(), pos = [], uv = [], nor = [];
+  for (const a of [0, Math.PI / 3, -Math.PI / 3]){ const cx = Math.cos(a) * 0.28, cz = Math.sin(a) * 0.28;
+    const q = [[-cx, 0, -cz, 0, 0], [cx, 0, cz, 1, 0], [cx, 0.45, cz, 1, 1], [-cx, 0, -cz, 0, 0], [cx, 0.45, cz, 1, 1], [-cx, 0.45, -cz, 0, 1]];
+    for (const v of q.concat([q[0], q[2], q[1], q[3], q[5], q[4]])){ pos.push(v[0], v[1], v[2]); uv.push(v[3], v[4]); nor.push(0, 1, 0); } }   // as duas faces, com a luz vindo de cima
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  const mat = new THREE.MeshLambertMaterial({map:tex, alphaTest:0.45});
+  const tiles = new Map(), TS = 60;
+  const put = (x, z, y, k) => { const key = Math.floor(x / TS) + ',' + Math.floor(z / TS); let t = tiles.get(key); if (!t){ t = {a:[], cx:(Math.floor(x / TS) + 0.5) * TS, cz:(Math.floor(z / TS) + 0.5) * TS}; tiles.set(key, t); } t.a.push([x, y, z, k]); };
+  const okTown = (x, z) => { if (inHouse(x, z, 0.5)) return false; const ri = roadInfo(x, z, 6); if (ri && ri.d < 2.4) return false; return true; };
+  const okAll = (x, z) => Math.abs(z - HWY_N) > 8 && Math.abs(z - HWY_S) > 8 && !(LAKE && Math.abs(x - LAKE.x) < LAKE.hw + 2 && Math.abs(z - LAKE.z) < LAKE.hd + 2);
+  const yAt = (x, z) => (z > NB && z < SB && Math.abs(x) < FOREST_X) ? groundAt(x, z, 0.05, (HF ? hfAt(x, z) : 0) + 0.5) : terrainAt(x, z);
+  const scatter = (n, fx, fz, ok, k) => { for (let i = 0; i < n; i++){ const x = fx(), z = fz(); if (!okAll(x, z) || (ok && !ok(x, z))) continue; const y = yAt(x, z); if (hitAny(x, z, 0.15, y + 0.05)) continue; put(x, z, y, k); } };
+  const n = SMALL ? 0.45 : 1;
+  // pelos lugares abandonados e estações: bem mais mato
+  for (const r of RUINS) scatter(260 * n, () => r.x + R(-20, 20), () => r.z + R(-20, 20), null, 1);
+  // beira dos trilhos (e brita no meio)
+  for (const r of RAILS) for (let s = r.a; s < r.b; s += 2.5 / n){ const o = (Math.random() < 0.5 ? -1 : 1) * R(0.3, 4), x = r.h ? s : r.c + o, z = r.h ? r.c + o : s; if (railH(r, s) > 0.3) continue; if (okAll(x, z)) put(x, z, yAt(x, z), 0.8); }
+  // cidade (terrenos, beira de muro e calçada), zona rural, serra e floresta
+  scatter(9000 * n, () => R(-TOWN, TOWN), () => R(NB + 8, SB - 8), okTown, 0.6);
+  scatter(9000 * n, () => R(WX1 + 5, WX2 - 5), () => R(SB + 6, WZ2 - 6), (x, z) => !FIELDS.some(f => x > f.box.x1 && x < f.box.x2 && z > f.box.z1 && z < f.box.z2) && !FPATHS.some(r => x > r.x1 - 0.5 && x < r.x2 + 0.5 && z > r.z1 - 0.5 && z < r.z2 + 0.5) && Math.abs(z - (SB + 9)) > 4, 0.5);
+  scatter(4000 * n, () => R(WX1 + 5, WX2 - 5), () => R(WZ1 + 6, NB - 6), null, 0.5);
+  scatter(5000 * n, () => (Math.random() < 0.5 ? -1 : 1) * R(FOREST_X + 3, WX2 - 4), () => R(NB, SB), (x, z) => Math.abs(z) > 3, 0.3);
+  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), Sc = new THREE.Vector3(), C = new THREE.Color();
+  for (const t of tiles.values()){
+    const m = new THREE.InstancedMesh(geo, mat, t.a.length);
+    t.a.forEach((p, i) => { const s = R(0.65, 1.15); E.set(0, R(0, 6.28), 0); Q.setFromEuler(E); V.set(p[0], p[1] - 0.02, p[2]); Sc.set(s, s * R(0.8, 1.25), s); M.compose(V, Q, Sc); m.setMatrixAt(i, M);
+      const dry = Math.random() * (0.2 + p[3] * 0.45); C.setRGB(0.55 + dry * 0.45, 0.72 - dry * 0.08, 0.4 - dry * 0.15); m.setColorAt(i, C); });
+    m.frustumCulled = false; m.visible = false; scene.add(m); GRASS.push({m, cx:t.cx, cz:t.cz});
   }
 }
 // casas destruídas e acampamentos abandonados
@@ -2351,8 +2471,12 @@ function surroundCheck(dt){
   P.around = n;
   if (n >= 4 && CFG.surround){ P.surr += dt; if (P.surr > 2.0){ P.dragged = true; P.vida = 0; } } else P.surr = Math.max(0, P.surr - dt * 2);
 }
-function stairGoal(z, ty){
+function stairGoal(z, ty, T){
   if (ty === undefined) ty = P.y;
+  if (VIADUCT && T && ty > z.y + 1.3 && Math.abs(T.x - VIADUCT.x) < 2.3 && Math.abs(T.z) < VIADUCT.L){
+    const V = VIADUCT; if (Math.abs(z.x - V.x) < 1.7 && Math.abs(z.z) < V.L + 2) return {x:V.x, z:T.z};
+    return {x:V.x, z:(z.z >= 0 ? 1 : -1) * (V.L + 2)};
+  }
   const b = inHouse(z.x, z.z); if (!b || !b.flights || !b.flights.length) return null;
   const on = b.flights.find(f => z.y > f.y0 + 0.05 && z.y < f.y1 - 0.05 && Math.abs((f.dx !== 0 ? z.z - f.z0 : z.x - f.x0)) < 1.0);
   if (ty > z.y){
@@ -2635,7 +2759,7 @@ function updateZombies(dt){
       }
       let ddx = z.tx - z.x, ddz = z.tz - z.z, d = Math.hypot(ddx, ddz), toDoor = false;
       if (z.state !== 'wander' && d > 1.2){ const bt = inHouse(z.tx, z.tz); if (bt && bt.dpx !== undefined && inHouse(z.x, z.z) !== bt){ const ax = bt.dpx + bt.dnx * 0.9, az = bt.dpz + bt.dnz * 0.9; if (Math.hypot(z.x - ax, z.z - az) > 1.0){ ddx = ax - z.x; ddz = az - z.z; d = Math.hypot(ddx, ddz); } else { ddx = bt.dpx - z.x; ddz = bt.dpz - z.z; d = Math.max(0.5, Math.hypot(ddx, ddz)); toDoor = true; } } }
-      if (z.state !== 'wander' && Math.abs(T.y - z.y) > 1.3){ const sg = stairGoal(z, T.y); if (!sg && z.state === 'chase' && T.y - z.y > 1.3 && !T.car && !z.crawl && dp < 16) pileJoin(z, T); else z.pgoal = null; if (!sg && z.pgoal){ ddx = z.pgoal.x - z.x; ddz = z.pgoal.z - z.z; d = Math.hypot(ddx, ddz); } if (sg){ ddx = sg.x - z.x; ddz = sg.z - z.z; d = Math.hypot(ddx, ddz); const f = sg.f; if (f && z.y > f.y0 + 0.05 && z.y < f.y1 - 0.05){ const k = Math.min(1, dt * 8); if (f.dx !== 0) z.z += (f.z0 - z.z) * k; else z.x += (f.x0 - z.x) * k; } } }
+      if (z.state !== 'wander' && Math.abs(T.y - z.y) > 1.3){ const sg = stairGoal(z, T.y, T); if (!sg && z.state === 'chase' && T.y - z.y > 1.3 && !T.car && !z.crawl && dp < 16) pileJoin(z, T); else z.pgoal = null; if (!sg && z.pgoal){ ddx = z.pgoal.x - z.x; ddz = z.pgoal.z - z.z; d = Math.hypot(ddx, ddz); } if (sg){ ddx = sg.x - z.x; ddz = sg.z - z.z; d = Math.hypot(ddx, ddz); const f = sg.f; if (f && z.y > f.y0 + 0.05 && z.y < f.y1 - 0.05){ const k = Math.min(1, dt * 8); if (f.dx !== 0) z.z += (f.z0 - z.z) * k; else z.x += (f.x0 - z.x) * k; } } }
       const same = Math.abs(T.y - z.y) < 1.2;
       if (z.state === 'chase' && dp < (T.car ? 2.75 : 1.0) && same){
         d = 0; z.g.rotation.y = lerpAng(z.g.rotation.y, Math.atan2(dxp, dzp), dt * 8);
@@ -3288,6 +3412,7 @@ function drawMini(){
   for (const z of zombies){ if (Math.abs(z.x - P.x) > 48 || Math.abs(z.z - P.z) > 48) continue; g.fillStyle = z.state === 'chase' ? '#ff3b30' : '#b8433a'; g.fillRect(tx(z.x) - 1.5, tz(z.z) - 1.5, 3, 3); }
   drawRouteMini(g, tx, tz);
   for (const v of VEH){ if (Math.abs(v.x - P.x) > 50 || Math.abs(v.z - P.z) > 50) continue; g.save(); g.translate(tx(v.x), tz(v.z)); g.rotate(-v.yaw); g.fillStyle = v.hp <= 0 ? '#555' : '#6ab0ff'; g.fillRect(-1.5 * sc, -3 * sc, 3 * sc, 6 * sc); g.restore(); }
+  if (TRAIN) for (const c of TRAIN.cars){ if (Math.abs(c.x - P.x) > 60 || Math.abs(c.z - P.z) > 60) continue; g.save(); g.translate(tx(c.x), tz(c.z)); g.rotate(-c.yaw); g.fillStyle = c.loco ? '#ffd23a' : '#d8a040'; g.fillRect(-2.2, -c.L * sc / 2, 4.4, c.L * sc); g.restore(); }
   for (const a of animals) if (!a.dead && Math.abs(a.x - P.x) < 40 && Math.abs(a.z - P.z) < 40 && a.state === 'flee'){ g.fillStyle = '#e0c060'; g.fillRect(tx(a.x) - 1, tz(a.z) - 1, 2, 2); }
   if (CFG.miniRotate) g.rotate(-P.yaw); else g.rotate(-P.yaw);
   g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(0, 2); g.lineTo(-5, 5); g.closePath(); g.fill(); g.stroke();
@@ -3746,6 +3871,7 @@ function drawMap(){
   g.textAlign = 'center'; g.lineJoin = 'round';
   for (const l of mapLabels){ if (Z < l.minZ) continue; const x = tx(l.x), y = tz(l.z); if (x < -80 || x > W + 80 || y < -20 || y > H + 20) continue;
     g.font = 'bold ' + Math.round(l.size * clamp(0.75 + Z * 0.12, 0.8, 1.4)) + 'px sans-serif'; g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 3; g.strokeText(l.t, x, y + 4); g.fillStyle = l.col; g.fillText(l.t, x, y + 4); }
+  if (TRAIN){ const c = TRAIN.cars[0]; g.fillStyle = '#ffd23a'; g.strokeStyle = '#000'; g.lineWidth = 2; g.beginPath(); g.arc(tx(c.x), tz(c.z), 7, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#ffe9a0'; g.font = 'bold 12px sans-serif'; g.fillText(TRAIN.stop > 0 ? 'TREM (parado na estação)' : 'TREM', tx(c.x), tz(c.z) - 11); }
   const HL = typeof NET !== 'undefined' && NET.on && NET.role === 'join' ? (NET.hd || []).map(q => ({x:q[0], z:q[1], n:q[2]})) : hordes;
   for (const h of HL){
     const rr = (3 + Math.sqrt(h.n) * 1.3) * Z + 4;
@@ -4290,6 +4416,7 @@ function cullChunks(){
   const lim = scene.fog.far + 32;
   for (const c of chunks.values()) if (c.mesh) c.mesh.visible = Math.hypot(c.cx - P.x, c.cz - P.z) < lim;
   for (const s of signs) s.visible = Math.hypot(s.position.x - P.x, s.position.z - P.z) < lim;
+  const lg = Math.min(lim, SMALL ? 45 : 70); for (const t of GRASS) t.m.visible = Math.abs(t.cx - P.x) < lg + 30 && Math.abs(t.cz - P.z) < lg + 30;
   const lv = Math.min(lim, 150); for (const v of VEH) v.g.visible = v === P.car || Math.hypot(v.x - P.x, v.z - P.z) < lv;
 }
 // relógio do jogo (com a opção de noite eterna: pula o dia e volta para o anoitecer)
@@ -4299,6 +4426,7 @@ function tickClock(dt){
 }
 function update(dt){
   tickClock(dt); if (P.srch > 0) P.srch -= dt;
+  if (TRAIN){ updateTrain(dt); if (!P.car && carryOnTrain(P)){ P.y = Math.max(P.y, groundAt(P.x, P.z, 0.3, P.y + 0.3)); P.ground = P.y; } for (const z of zombies) if (!z.rep && z.y > 0.9) carryOnTrain(z); }
   updateEnv();
   let mx = P.fin ? 0 : touch.mx, mz = P.fin ? 0 : touch.mz;
   if (!P.fin){
@@ -4816,7 +4944,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-5';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-6';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
@@ -4938,7 +5066,7 @@ function netMyState(){
   if (NET.noise){ m.nz = [r2(NET.noise[0]), r2(NET.noise[1]), r2(NET.noise[2])]; NET.noise = null; }
   if (NET.role === 'host'){
     m.h = 1; m.gm = Math.round(gameMin * 10) / 10; m.rn = rainOn ? 1 : 0; m.rk = r2(rainK);
-    m.hd = hordes.map(h => [Math.round(h.x), Math.round(h.z), h.n]); m.an = netAnimalSnap();
+    m.hd = hordes.map(h => [Math.round(h.x), Math.round(h.z), h.n]); m.an = netAnimalSnap(); if (TRAIN) m.tr = [Math.round(TRAIN.s * 10) / 10, r2(TRAIN.v)];
     m.zs = netZombieSnap(); const now = performance.now();
     NET.deaths = NET.deaths.filter(d => now - d.t < 2500);
     if (NET.deaths.length) m.d = NET.deaths.map(d => [d.nid, r2(d.dx), r2(d.dz), d.o ? (d.o.head ? 1 : 0) | (d.o.crumple ? 2 : 0) : 0, d.k]);
@@ -4989,7 +5117,7 @@ function netApplyAnimals(an){
   for (const [nid, a] of NET.ra) if (now - a.net.t > 4000){ scene.remove(a.g); const k = animals.indexOf(a); if (k >= 0) animals.splice(k, 1); if (a.cont){ const ci = containers.indexOf(a.cont); if (ci >= 0) containers.splice(ci, 1); } NET.ra.delete(nid); }
 }
 function netFromHost(m){
-  NET.hd = m.hd || NET.hd; netApplyAnimals(m.an);
+  NET.hd = m.hd || NET.hd; netApplyAnimals(m.an); if (m.tr && TRAIN) TRAIN.net = {s:m.tr[0], v:m.tr[1]};
   if (Math.abs(gameMin - m.gm) > 3) gameMin = m.gm; else gameMin += (m.gm - gameMin) * 0.2;
   rainOn = !!m.rn; rainT = 1e9; rainK += ((m.rk || 0) - rainK) * 0.3;
   // mortes primeiro (para não recriar quem morreu)
