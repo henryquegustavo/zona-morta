@@ -521,6 +521,7 @@ function moveCircle(o, dx, dz, r, feet){
   if (hitAny(o.x, o.z, r * 0.9, feet)){ o.x += dx; o.z += dz; return; }
   o.x += dx; if (hitAny(o.x, o.z, r, feet)) o.x -= dx; o.z += dz; if (hitAny(o.x, o.z, r, feet)) o.z -= dz;
 }
+let GNOVEH = false;
 function groundAt(x, z, r, feet){
   const lim = (feet || 0) + 0.6; let g = terrainAt(x, z);
   for (let i = Math.floor((x - r) / CELL); i <= Math.floor((x + r) / CELL); i++)
@@ -530,7 +531,7 @@ function groundAt(x, z, r, feet){
       if (b) for (const p of b){ if (p.top > lim || p.top <= g || x + r <= p.x1 || x - r >= p.x2 || z + r <= p.z1 || z - r >= p.z2) continue; g = p.top; }
     }
   // dá para subir no capô e no teto dos carros
-  for (let n = 0; n < VEH.length; n++){ const v = VEH[n]; if (v === CURV || Math.abs(x - v.x) > 2.4 + r || Math.abs(z - v.z) > 2.4 + r || v.y + 0.95 > lim || v.y + 1.56 <= g) continue;
+  if (!GNOVEH) for (let n = 0; n < VEH.length; n++){ const v = VEH[n]; if (v === CURV || Math.abs(x - v.x) > 2.4 + r || Math.abs(z - v.z) > 2.4 + r || v.y + 0.95 > lim || v.y + 1.56 <= g) continue;
     const dx = x - v.x, dz = z - v.z, c = Math.cos(v.yaw), sn = Math.sin(v.yaw), lr = dx * c - dz * sn, lf = dx * sn + dz * c;
     if (Math.abs(lr) > 0.95 + r * 0.5 || Math.abs(lf) > 2.15 + r * 0.5) continue;
     const cz = v.kind === 'pick' ? 0.55 : -0.25, cl = v.kind === 'pick' ? 0.8 : 1.1, t = v.y + (Math.abs(lf - cz) < cl && v.y + 1.56 <= lim ? 1.56 : 0.95); if (t > g) g = t; }
@@ -3810,7 +3811,7 @@ function makeVehMesh(col, kind){
 function addVehicle(x, z, yaw, o){
   o = o || {}; const col = o.col || pick(CARCOL), kind = o.kind || (Math.random() < 0.25 ? 'pick' : 'sedan'), m = makeVehMesh(col, kind);
   const v = {x, z, y:o.y !== undefined ? o.y : terrainAt(x, z), yaw, pitch:0, spd:0, steer:0, spin:0, fuel:o.fuel !== undefined ? o.fuel : Math.round(R(4, 60)), hp:o.hp !== undefined ? o.hp : Math.round(R(40, 100)), g:m.g, wheels:m.wheels, kind, hitT:0};
-  v.y = groundAt(x, z, 0.5, v.y + 0.5); v.g.position.set(x, v.y, z); v.g.rotation.y = yaw; scene.add(v.g); VEH.push(v); return v;
+  GNOVEH = true; v.y = groundAt(x, z, 0.5, v.y + 0.5); GNOVEH = false; v.g.position.set(x, v.y, z); v.g.rotation.y = yaw; scene.add(v.g); VEH.push(v); return v;
 }
 function vehFree(x, z, yaw){
   if (Math.abs(terrainAt(x, z + 2) - terrainAt(x, z - 2)) > 1.2 || Math.abs(terrainAt(x + 2, z) - terrainAt(x - 2, z)) > 1.2) return false;
@@ -3933,7 +3934,9 @@ function moveVeh(v, dt){
     v.spd = -v.spd * 0.25;
   }
   // chão e inclinação
+  CURV = v;   // o próprio carro não conta como chão (senão ele sobe no próprio capô e sai voando)
   const fy = groundAt(v.x + sn * 1.4, v.z + c * 1.4, 0.5, v.y + 0.55), by = groundAt(v.x - sn * 1.4, v.z - c * 1.4, 0.5, v.y + 0.55), my = groundAt(v.x, v.z, 0.6, v.y + 0.55);
+  CURV = null;
   const ty = Math.max(my, (fy + by) / 2);
   v.y = ty > v.y ? ty : Math.max(ty, v.y - dt * 9);
   v.pitch += (Math.atan2(fy - by, 2.8) - v.pitch) * Math.min(1, dt * 8);
@@ -4756,7 +4759,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-3';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-4';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
