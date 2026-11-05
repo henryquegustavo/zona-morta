@@ -110,6 +110,10 @@ body.hudEd #touch{z-index:75;background:rgba(0,0,0,.35);pointer-events:auto}body
 #hudEd .hT{font-weight:bold;letter-spacing:2px;color:#e3b55b}#hudEd .hS{color:#b8b0a0;margin:2px 0 4px}
 #hudEd .hR{display:flex;align-items:center;gap:8px;margin:3px 0}#hudEd .hR label{width:42%;text-align:left}#hudEd .hR input{flex:1}
 #hudEd .hB{display:flex;gap:6px;justify-content:center;margin-top:6px}
+#pcEd{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:80;background:rgba(18,16,13,.96);border:1px solid #5a4f3e;border-radius:8px;padding:10px 14px;width:min(440px,80vw);font-size:13px;color:#f0e6d0;text-align:center;cursor:move}
+#pcEd .hT{font-weight:bold;letter-spacing:2px;color:#e3b55b}#pcEd .hS{color:#b8b0a0;margin:3px 0 6px}#pcEd .hR{display:flex;align-items:center;gap:8px;margin:4px 0}#pcEd .hR label{width:45%;text-align:left}#pcEd .hR input{flex:1}#pcEd .hB{display:flex;gap:6px;justify-content:center;margin-top:8px}
+body.pcEd #hud .pce{pointer-events:auto !important;outline:2px dashed rgba(227,181,91,.75);outline-offset:3px;cursor:grab;min-width:40px;min-height:24px}
+body.pcEd #hud .pce.sel{outline:3px solid #e3b55b}
 #joyB{position:absolute;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,.3);display:none}
 #joyK{position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.35);display:none}
 @media (pointer:coarse){ #nav{top:66px} #hot{bottom:auto;top:12px} .sl{width:62px;height:46px;font-size:9.5px} #log{bottom:110px} }
@@ -4476,6 +4480,49 @@ function hudMove(id, cx, cy){
   c.v = cy < H / 2 ? 't' : 'b'; c.y = (c.v === 't' ? cy : H - cy) / u;
   layoutTouch();
 }
+// ---------- editor da interface no PC: arrastar e mudar o tamanho dos painéis ----------
+const PCHUD = {stats:'Vida e fome', moods:'Estados', clock:'Relógio', mini:'Minimapa', hot:'Barra de armas', weap:'Arma atual', log:'Mensagens', carHud:'Painel do carro'};
+let PCH = {}; try { PCH = JSON.parse(localStorage.getItem('zm_pchud') || '{}'); } catch(e){}
+let pchSel = null, pchBak = null, pchFrom = null;
+function pchApply(){ for (const id in PCHUD){ const el = $('#' + id); if (!el) continue; const c = PCH[id]; el.style.translate = c ? c.x + 'px ' + c.y + 'px' : ''; el.style.scale = c && c.s !== 1 ? String(c.s) : ''; } }
+function pchPick(id){ pchSel = id; for (const k in PCHUD){ const el = $('#' + k); if (el) el.classList.toggle('sel', k === id); } $('#pchN').textContent = id ? PCHUD[id] : '— clique num painel'; $('#pchSz').disabled = !id; if (id) $('#pchSz').value = (PCH[id] || {s:1}).s; }
+function pchOpen(){
+  pchFrom = $('#pause').style.display === 'flex' ? 'pause' : running ? 'game' : 'start';
+  pchBak = JSON.stringify(PCH); unlock(); hidePanels(); panel = 'pched'; $('#pause').style.display = 'none';
+  if (pchFrom === 'start'){ $('#start').style.display = 'none'; $('#hud').style.display = 'block'; try { updateHUD(); } catch(e){} }
+  $('#carHud').style.display = 'block'; if (!$('#carHud').innerHTML) $('#carHud').innerHTML = '<b>38</b> km/h · ⛽ 79% · 🔧 50%';
+  if (!$('#log').innerHTML) $('#log').innerHTML = '<div>As mensagens aparecem aqui.</div>';
+  document.body.classList.add('pcEd'); let ed = $('#pcEd');
+  if (!ed){
+    ed = document.createElement('div'); ed.id = 'pcEd';
+    ed.innerHTML = `<div class="hT">PERSONALIZAR INTERFACE</div><div class="hS">Arraste os painéis (contorno amarelo) para onde quiser. Clique num painel para mudar o tamanho dele. Esta caixa também pode ser arrastada.</div>
+      <div class="hR"><label>Tamanho: <b id="pchN">—</b></label><input type="range" id="pchSz" min="0.6" max="1.8" step="0.05" disabled></div>
+      <div class="hR"><label>Tamanho de tudo</label><input type="range" id="pchAll" min="0.7" max="1.4" step="0.05"></div>
+      <div class="hB"><button class="btn s g" id="pchDef">PADRÃO</button><button class="btn s g" id="pchCancel">CANCELAR</button><button class="btn s" id="pchOk">SALVAR</button></div>`;
+    document.body.appendChild(ed);
+    $('#pchSz').oninput = e => { if (!pchSel) return; const c = PCH[pchSel] || (PCH[pchSel] = {x:0, y:0, s:1}); c.s = +e.target.value; pchApply(); };
+    $('#pchAll').oninput = e => { CFG.hudScale = +e.target.value; applyCfg('hudScale'); };
+    $('#pchDef').onclick = () => { PCH = {}; CFG.hudScale = 1; applyCfg('hudScale'); $('#pchAll').value = 1; pchApply(); pchPick(null); };
+    $('#pchCancel').onclick = () => { PCH = JSON.parse(pchBak); pchApply(); pchClose(); };
+    $('#pchOk').onclick = () => { try { localStorage.setItem('zm_pchud', JSON.stringify(PCH)); } catch(e){} pchClose(); };
+    const drag = (el, onMove, onDown) => el.addEventListener('pointerdown', e => {
+      if (!document.body.classList.contains('pcEd') || e.target.closest('input,button')) return; e.preventDefault(); e.stopPropagation(); onDown && onDown();
+      let lx = e.clientX, ly = e.clientY; const pid = e.pointerId; try { el.setPointerCapture(pid); } catch(_){}
+      const mv = ev => { if (ev.pointerId !== pid) return; onMove(ev.clientX - lx, ev.clientY - ly); lx = ev.clientX; ly = ev.clientY; };
+      const up = ev => { if (ev.pointerId !== pid) return; el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); });
+    for (const id in PCHUD){ const el = $('#' + id); if (!el) continue; el.classList.add('pce');
+      drag(el, (dx, dy) => { const c = PCH[id] || (PCH[id] = {x:0, y:0, s:1}); c.x = Math.round(c.x + dx); c.y = Math.round(c.y + dy); pchApply(); }, () => pchPick(id)); }
+    let bx = 0, by = 0; drag(ed, (dx, dy) => { bx += dx; by += dy; ed.style.translate = bx + 'px ' + by + 'px'; });
+  }
+  $('#pchAll').value = CFG.hudScale; pchPick(null); ed.style.display = 'block';
+}
+function pchClose(){
+  document.body.classList.remove('pcEd'); $('#pcEd').style.display = 'none'; pchPick(null); panel = null;
+  if (!P.car) $('#carHud').style.display = 'none';
+  if (pchFrom === 'start'){ $('#hud').style.display = 'none'; $('#start').style.display = 'flex'; return; }
+  paused = true; $('#pause').style.display = 'flex';
+}
 function hudEditClose(){
   HUDED = false; panel = null; document.body.classList.remove('hudEd'); $('#hudEd').style.display = 'none'; hudPick(null); layoutTouch();
   if (!running){ $('#touch').style.display = isTouch ? 'block' : 'none'; }
@@ -5011,6 +5058,8 @@ function mpSetup(){
   for (const id of ['#bStart', '#mpCreate', '#mpJoin', '#bResume', '#bRetry']){ const b = $(id); if (b) b.addEventListener('click', goFull, true); }
   if (isTouch) document.body.classList.add('tch');
   if (isTouch || QS.get('hud')){ for (const id of ['#cfgHud', '#bHud2']){ const b = $(id); b.style.display = ''; b.onclick = e => { e.stopPropagation(); hudEditOpen(); }; } }
+  else { $('#cfgHud').textContent = '🖥️ Interface'; $('#bHud2').textContent = 'INTERFACE'; for (const id of ['#cfgHud', '#bHud2']){ const b = $(id); b.style.display = ''; b.onclick = e => { e.stopPropagation(); pchOpen(); }; } }
+  pchApply();
   const n = (() => { try { return localStorage.getItem('zmNome'); } catch(e){ return null; } })() || QS.get('nome') || '';
   $('#mpName').value = QS.get('nome') || n; const sala = (QS.get('sala') || '').toUpperCase(); if (sala) $('#mpCode').value = sala;
   $('#mpCreate').onclick = mpCreate; $('#mpJoin').onclick = () => mpJoin();
