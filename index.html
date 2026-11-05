@@ -397,13 +397,70 @@ function ctex(w, h, draw, rx, ry){
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx || 1, ry || 1); return t;
 }
 function speckle(g, w, h, base, cols, n){ g.fillStyle = base; g.fillRect(0, 0, w, h); for (let i = 0; i < n; i++){ g.fillStyle = cols[i % cols.length]; g.fillRect(Math.random() * w, Math.random() * h, R(1, 3), R(1, 3)); } }
+// ---------- texturas procedurais "realistas" (sem baixar nada): ruído que repete sem emenda ----------
+function thash(i, j, s){ let h = (Math.imul(i, 374761393) + Math.imul(j, 668265263) + Math.imul(s, 1442695041)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h & 0xffff) / 0xffff; }
+function tnoise(u, v, f, s){ const x = u * f, y = v * f, i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, a = fx * fx * (3 - 2 * fx), b = fy * fy * (3 - 2 * fy), m = k => ((k % f) + f) % f;
+  const h00 = thash(m(i), m(j), s), h10 = thash(m(i + 1), m(j), s), h01 = thash(m(i), m(j + 1), s), h11 = thash(m(i + 1), m(j + 1), s);
+  return h00 * (1 - a) * (1 - b) + h10 * a * (1 - b) + h01 * (1 - a) * b + h11 * a * b; }
+function tfbm(u, v, f, s, oct){ let t = 0, amp = 0.5, n = 0; for (let o = 0; o < (oct || 4); o++){ t += tnoise(u, v, f << o, s + o * 17) * amp; n += amp; amp *= 0.5; } return t / n; }
+function procTex(size, pix, post, gray){
+  const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'), im = g.createImageData(size, size), d = im.data;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++){ const p = pix(x / size, y / size), i = (y * size + x) * 4; d[i] = p[0]; d[i + 1] = p[1]; d[i + 2] = p[2]; d[i + 3] = 255; }
+  g.putImageData(im, 0, 0); if (post) post(g, size);
+  if (gray){ // média em 50% de cinza: multiplicar pela textura não muda o brilho geral
+    const id = g.getImageData(0, 0, size, size), q = id.data; let s = 0; for (let i = 0; i < q.length; i += 4) s += q[i]; const k = 128 / (s / (q.length / 4));
+    for (let i = 0; i < q.length; i += 4){ q[i] = Math.min(255, q[i] * k); q[i + 1] = Math.min(255, q[i + 1] * k); q[i + 2] = Math.min(255, q[i + 2] * k); } g.putImageData(id, 0, 0); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
+}
+const cracks = (g, S, n, col, w) => { g.strokeStyle = col; g.lineWidth = w; for (let k = 0; k < n; k++){ let x = Math.random() * S, y = Math.random() * S; g.beginPath(); g.moveTo(x, y); for (let s = 0; s < 8; s++){ x += R(-14, 14); y += R(-14, 14); g.lineTo(x, y); } g.stroke(); } };
+function makeDetailTex(){
+  const D = {};
+  // chão/calçada/concreto: grão, pedrinhas e rachaduras
+  D.grit = procTex(256, (u, v) => { const n = tfbm(u, v, 8, 3, 5), p = tnoise(u, v, 128, 9) > 0.86 ? -30 : 0, c = 118 + (n - 0.5) * 70 + p; return [c, c, c]; }, g => cracks(g, 256, 5, 'rgba(40,40,40,.35)', 1), true);
+  // parede: reboco com manchas, escorridos e sujeira
+  D.wall = procTex(256, (u, v) => { const n = tfbm(u, v, 4, 11, 4), f = tnoise(u, v, 64, 5), streak = tnoise(u * 0.5, v * 8, 16, 21), c = 128 + (n - 0.5) * 46 + (f - 0.5) * 22 - (streak > 0.72 ? 14 : 0); return [c, c, c]; }, g => cracks(g, 256, 3, 'rgba(50,45,40,.3)', 1), true);
+  // asfalto: brita escura e clara, remendos e rachaduras
+  D.asph = procTex(256, (u, v) => { const n = tfbm(u, v, 6, 31, 4), s = tnoise(u, v, 256, 2), patch = tnoise(u, v, 3, 41) > 0.7 ? -16 : 0, c = 122 + (n - 0.5) * 34 + (s > 0.9 ? 48 : s < 0.08 ? -40 : 0) + patch; return [c, c, c]; }, g => cracks(g, 256, 7, 'rgba(15,15,15,.45)', 1.2), true);
+  // morro/terra: torrões e pedras
+  D.soil = procTex(256, (u, v) => { const n = tfbm(u, v, 6, 51, 5), r = tnoise(u, v, 32, 7), c = 124 + (n - 0.5) * 60 + (r > 0.8 ? 22 : 0); return [c, c * 0.98, c * 0.95]; }, null, true);
+  // grama de verdade (com cor) para os planos do chão
+  D.grass = procTex(512, (u, v) => { const n = tfbm(u, v, 6, 61, 5), m = tnoise(u, v, 3, 71), dry = tnoise(u, v, 5, 81);
+    return [52 + n * 38 + dry * 26 - m * 8, 70 + n * 46 - dry * 6 + m * 10, 30 + n * 20 - m * 6]; }, (g, S) => { for (let i = 0; i < 9000; i++){ const x = Math.random() * S, y = Math.random() * S, l = R(3, 9), a = R(-0.5, 0.5) - Math.PI / 2; g.strokeStyle = pick(['rgba(110,140,60,.55)', 'rgba(60,85,35,.6)', 'rgba(140,150,80,.45)', 'rgba(40,60,28,.55)']); g.lineWidth = R(0.6, 1.4); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l * 0.3, y + Math.sin(a) * l); g.stroke(); } });
+  D.forest = procTex(512, (u, v) => { const n = tfbm(u, v, 6, 91, 5), m = tnoise(u, v, 4, 97); return [48 + n * 36 + m * 18, 50 + n * 30, 28 + n * 16]; }, (g, S) => { for (let i = 0; i < 5000; i++){ const x = Math.random() * S, y = Math.random() * S; g.fillStyle = pick(['rgba(110,70,30,.6)', 'rgba(140,100,40,.5)', 'rgba(60,80,30,.55)', 'rgba(80,50,25,.6)', 'rgba(160,120,60,.4)']); g.beginPath(); g.ellipse(x, y, R(1.5, 4), R(0.8, 2), R(0, 3), 0, 7); g.fill(); } for (let i = 0; i < 300; i++){ g.strokeStyle = 'rgba(70,50,30,.6)'; g.lineWidth = R(0.8, 2); const x = Math.random() * S, y = Math.random() * S, a = R(0, 6.28), l = R(6, 20); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); } });
+  D.dirt = procTex(256, (u, v) => { const n = tfbm(u, v, 8, 101, 5), r = tnoise(u, v, 128, 103); return [100 + n * 50 + (r > 0.85 ? 25 : 0), 78 + n * 38 + (r > 0.85 ? 18 : 0), 50 + n * 26]; }, (g, S) => { g.strokeStyle = 'rgba(60,40,25,.35)'; g.lineWidth = 3; for (const y of [S * 0.3, S * 0.7]){ g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= S; x += 16) g.lineTo(x, y + R(-2, 2)); g.stroke(); } });
+  return D;
+}
+let DTX = null;
+// material com textura "de detalhe" projetada pelo mundo (topo, lados): cobre prédios, calçadas, ruas e morros sem precisar de UV
+function detailMat(o){
+  const m = new THREE.MeshLambertMaterial(Object.assign({vertexColors:true}, o.base || {}));
+  if (!DTX || CFG.quality === 'baixa') return m;
+  m.onBeforeCompile = sh => {
+    sh.uniforms.tTop = {value:o.top}; sh.uniforms.tSide = {value:o.side || o.top}; sh.uniforms.dS = {value:new THREE.Vector2(o.sTop || 0.2, o.sSide || 0.3)}; sh.uniforms.dK = {value:o.k === undefined ? 1 : o.k};
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tTop; uniform sampler2D tSide; uniform vec2 dS; uniform float dK; varying vec3 vWP; varying vec3 vWN;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+      { vec3 n = abs(normalize(vWN)); vec3 dt = texture2D(tTop, vWP.xz * dS.x).rgb; vec3 dx = texture2D(tSide, vec2(vWP.z, vWP.y) * dS.y).rgb, dz = texture2D(tSide, vec2(vWP.x, vWP.y) * dS.y).rgb;
+        vec3 d = mix(mix(dz, dx, smoothstep(0.3, 0.7, n.x)), dt, smoothstep(0.55, 0.85, n.y));
+        // telhado inclinado: fileiras de telha
+        float sl = smoothstep(0.25, 0.4, n.y) * (1.0 - smoothstep(0.86, 0.95, n.y)) * dK;
+        if (sl > 0.0){ float row = fract(vWP.y * 4.2), col = fract((n.x > n.z ? vWP.z : vWP.x) * 3.3 + floor(vWP.y * 4.2) * 0.5);
+          float t = 0.78 + 0.22 * smoothstep(0.0, 0.35, row) - 0.12 * (1.0 - smoothstep(0.0, 0.06, col)); d = mix(d, d * t * 1.12, sl); }
+        float far = smoothstep(30.0, 95.0, length(vWP - cameraPosition)); d = mix(d, vec3(0.5), far * 0.75);
+        diffuseColor.rgb *= mix(vec3(1.0), d * 2.0, dK); }`);
+  };
+  m.customProgramCacheKey = () => 'det' + (o.key || '');
+  return m;
+}
 let TX = null;
 function makeTextures(){
+  DTX = makeDetailTex();
   TX = {
-    grass: ctex(128, 128, (g, w, h) => speckle(g, w, h, '#4b5a33', ['#55663a', '#3f4c2a', '#5c6b40', '#4a4a2c'], 2500), 216, 126),
-    forest: ctex(128, 128, (g, w, h) => speckle(g, w, h, '#3a4226', ['#4a3a24', '#2f3a1f', '#55482c', '#3d4a2a', '#5a5030'], 3500), 45, 126),
+    grass: (() => { const t = DTX.grass.clone(); t.needsUpdate = true; t.repeat.set(170, 100); return t; })(),
+    forest: (() => { const t = DTX.forest.clone(); t.needsUpdate = true; t.repeat.set(40, 110); return t; })(),
     road: ctex(128, 128, (g, w, h) => speckle(g, w, h, '#3a3a3c', ['#444', '#303032', '#4a4a4a'], 3000), 2, 105),
-    dirt: ctex(128, 128, (g, w, h) => speckle(g, w, h, '#6a5338', ['#5a4530', '#7a6040', '#4d3c28'], 3000), 30, 1.5)
+    dirt: (() => { const t = DTX.dirt.clone(); t.needsUpdate = true; t.repeat.set(30, 1.5); return t; })()
   };
 }
 function makeSign(text, color, x, y, z, w, ry){
@@ -452,7 +509,7 @@ function toGeometry(a){
 }
 function mergedGeo(list){ const a = {n:0, cap:0}; for (const p of list) pushGeo(a, ...p); return toGeometry(a); }
 function finalizeStatic(){
-  const mat = new THREE.MeshLambertMaterial({vertexColors:true});
+  const mat = detailMat({top:DTX && DTX.grit, side:DTX && DTX.wall, sTop:0.22, sSide:0.32, k:1, key:'st'});
   for (const c of chunks.values()){ if (!c.n) continue; c.mesh = new THREE.Mesh(toGeometry(c), mat); scene.add(c.mesh); c.pos = c.nor = c.col = null; }
 }
 
@@ -483,7 +540,7 @@ function buildTerrain(z1, z2){
     cols[i * 3] = C.r; cols[i * 3 + 1] = C.g; cols[i * 3 + 2] = C.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(cols, 3)); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({vertexColors:true})); scene.add(m); return m;
+  const m = new THREE.Mesh(g, detailMat({top:DTX && DTX.soil, side:DTX && DTX.soil, sTop:0.12, sSide:0.12, k:0.85, key:'tr'})); scene.add(m); return m;
 }
 
 // ================= COLISÃO (grade espacial, com andares) =================
@@ -1691,7 +1748,7 @@ function buildCityTerrain(){
     cols[i * 3] = 0.29 + n + dry; cols[i * 3 + 1] = 0.36 + n + Math.min(0.06, hh * 0.003); cols[i * 3 + 2] = 0.2 + n * 0.8;
   }
   g.setAttribute('color', new THREE.BufferAttribute(cols, 3)); g.computeVertexNormals();
-  scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({vertexColors:true})));
+  scene.add(new THREE.Mesh(g, detailMat({top:DTX && DTX.soil, side:DTX && DTX.soil, sTop:0.14, sSide:0.14, k:0.8, key:'ct'})));
 }
 function buildRoadMeshes(){
   const pos = [], col = [], C = new THREE.Color();
@@ -1723,7 +1780,7 @@ function buildRoadMeshes(){
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   const nrm = new Float32Array(pos.length); for (let i = 1; i < nrm.length; i += 3) nrm[i] = 1; g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({vertexColors:true, side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:-1, polygonOffsetUnits:-4}));
+  const mesh = new THREE.Mesh(g, detailMat({base:{side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:-1, polygonOffsetUnits:-4}, top:DTX && DTX.asph, side:DTX && DTX.grit, sTop:0.18, sSide:0.3, k:1, key:'rd'}));
   mesh.frustumCulled = false; scene.add(mesh);
 }
 function buildCityProps(){
@@ -4759,7 +4816,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-4';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-5';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
