@@ -507,6 +507,11 @@ function groundAt(x, z, r, feet){
       if (a) for (const c of a){ if (c.off || c.nt || c.h > lim || c.h <= g || x + r < c.x1 || x - r > c.x2 || z + r < c.z1 || z - r > c.z2) continue; g = c.h; }
       if (b) for (const p of b){ if (p.top > lim || p.top <= g || x + r <= p.x1 || x - r >= p.x2 || z + r <= p.z1 || z - r >= p.z2) continue; g = p.top; }
     }
+  // dá para subir no capô e no teto dos carros
+  for (let n = 0; n < VEH.length; n++){ const v = VEH[n]; if (v === CURV || Math.abs(x - v.x) > 2.4 + r || Math.abs(z - v.z) > 2.4 + r || v.y + 0.95 > lim || v.y + 1.56 <= g) continue;
+    const dx = x - v.x, dz = z - v.z, c = Math.cos(v.yaw), sn = Math.sin(v.yaw), lr = dx * c - dz * sn, lf = dx * sn + dz * c;
+    if (Math.abs(lr) > 0.95 + r * 0.5 || Math.abs(lf) > 2.15 + r * 0.5) continue;
+    const cz = v.kind === 'pick' ? 0.55 : -0.25, cl = v.kind === 'pick' ? 0.8 : 1.1, t = v.y + (Math.abs(lf - cz) < cl && v.y + 1.56 <= lim ? 1.56 : 0.95); if (t > g) g = t; }
   return g;
 }
 function topAt(x, z){
@@ -1022,14 +1027,23 @@ function buildTree(x, z, kind, y0){
   }
   addCol({x1:x - 0.22 * s, x2:x + 0.22 * s, z1:z - 0.22 * s, z2:z + 0.22 * s});
 }
+// carro estacionado (garagem, rua, rodovia): vira um carro de verdade no fim da geração, com o porta-malas junto
+let PROPCARS = [];
 function buildCar(x, z, alongZ){
-  const col = pick([0x7a2222, 0x2a3f6a, 0x777777, 0xc9c2a8, 0x2d4a2d, 0x111111, 0xa08020, 0xe8e8e8, 0x3a3a3a]);
-  const sx = alongZ ? 1.9 : 4.2, sz = alongZ ? 4.2 : 1.9;
-  addBox(x, 0.6, z, sx, 0.8, sz, col);
-  addBox(x, 1.25, z, alongZ ? 1.7 : 2.2, 0.55, alongZ ? 2.2 : 1.7, 0x1c2228, false);
-  for (const a of [-1, 1]) for (const b of [-1, 1]) addBox(x + (alongZ ? a * 0.9 : b * 1.3), 0.3, z + (alongZ ? b * 1.3 : a * 0.9), alongZ ? 0.2 : 0.6, 0.6, alongZ ? 0.6 : 0.2, 0x151515, false);
-  addPlat(alongZ ? {x1:x - 0.85, x2:x + 0.85, z1:z - 1.1, z2:z + 1.1, top:1.525} : {x1:x - 1.1, x2:x + 1.1, z1:z - 0.85, z2:z + 0.85, top:1.525});
   addContainer(x, z, 'portamalas', 3.0);
+  PROPCARS.push({x, z, y:0, alongZ, ci:containers.length - 1, flip:Math.random() < 0.5, col:pick(CARCOL), fuel:Math.round(R(0, 35)), hp:Math.round(R(25, 90))});
+}
+function spawnPropCars(){
+  // nem todo carro de enfeite vira carro (pesaria no celular); os que sobram somem junto com o porta-malas
+  const keep = SMALL ? 55 : 110, rate = Math.min(1, keep / Math.max(1, PROPCARS.length));
+  for (const p of PROPCARS){
+    const drop = () => { const c = containers[p.ci]; if (c) c.range = 0; };
+    if (Math.random() > rate || VEH.some(v => Math.hypot(v.x - p.x, v.z - p.z) < 3.5)){ drop(); continue; }
+    const yaw = (p.alongZ ? 0 : Math.PI / 2) + (p.flip ? Math.PI : 0);
+    const v = addVehicle(p.x, p.z, yaw, {col:p.col, fuel:p.fuel, hp:p.hp, y:p.y});
+    const c = containers[p.ci]; if (c){ v.trunk = c; c.veh = v; }
+  }
+  PROPCARS = [];
 }
 
 function buildWires(){
@@ -1351,7 +1365,7 @@ function doorInfo(h){
 }
 function placeBuild(ox, oz, by, q, fn){
   q = ((q % 4) + 4) % 4;
-  const s0 = {col:colliders.length, plat:platforms.length, ents:ents.length, cont:containers.length, cook:cookSpots.length, pumps:pumps.length, houses:houses.length, lamps:lamps.length, signs:signs.length, areas:areas.length, kids:scene.children.length};
+  const s0 = {pc:PROPCARS.length, col:colliders.length, plat:platforms.length, ents:ents.length, cont:containers.length, cook:cookSpots.length, pumps:pumps.length, houses:houses.length, lamps:lamps.length, signs:signs.length, areas:areas.length, kids:scene.children.length};
   const geo = {n:0, cap:0}, prevB = BUILD, prevD = DEFER; BUILD = {geo}; DEFER = true;
   let ret; try { ret = fn(); } finally { BUILD = prevB; DEFER = prevD; }
   const W = (x, z) => { const r = rotP(q, x, z); return [ox + r[0], oz + r[1]]; };
@@ -1373,6 +1387,7 @@ function placeBuild(ox, oz, by, q, fn){
     if (e.type === 'door'){ e.h0 = (e.axis === 'z' ? e.z : e.x) - (e.gw + 0.04) / 2; if (q >= 2) e.side = -e.side; }
   }
   for (let i = s0.cont; i < containers.length; i++){ const c = containers[i], w = W(c.x, c.z); c.x = w[0]; c.z = w[1]; c.y = (c.y || 0) + by; }
+  for (let i = s0.pc; i < PROPCARS.length; i++){ const c = PROPCARS[i], w = W(c.x, c.z); c.x = w[0]; c.z = w[1]; c.y += by; if (q % 2) c.alongZ = !c.alongZ; }
   for (let i = s0.cook; i < cookSpots.length; i++){ const c = cookSpots[i], w = W(c.x, c.z); c.x = w[0]; c.z = w[1]; c.y = (c.y || 0) + by; }
   for (let i = s0.pumps; i < pumps.length; i++){ const c = pumps[i], w = W(c.x, c.z); c.x = w[0]; c.z = w[1]; c.y = (c.y || 0) + by; }
   for (let i = s0.lamps; i < lamps.length; i++){ const l = lamps[i], w = W(l[0], l[2]); l[0] = w[0]; l[1] += by; l[2] = w[1]; }
@@ -1821,7 +1836,7 @@ function buildVacant(w){
 }
 
 function buildWorld(){
-  SEEDX = R(-5000, 5000); SEEDZ = R(-5000, 5000);
+  SEEDX = R(-5000, 5000); SEEDZ = R(-5000, 5000); PROPCARS = [];
   planWild();
   const gr = new THREE.Mesh(new THREE.PlaneGeometry(WX2 - WX1, SB - NB), new THREE.MeshLambertMaterial({map:TX.grass}));
   gr.rotation.x = -Math.PI / 2; gr.position.set((WX1 + WX2) / 2, -0.06, (NB + SB) / 2); scene.add(gr);
@@ -1845,7 +1860,7 @@ function buildWorld(){
   buildWild();
   for (const h of houses) if (h.dpx === undefined) doorInfo(h);
   buildBGrid();
-  spawnVehicles();
+  spawnVehicles(); spawnPropCars();
   buildMapBG();
   finalizeStatic();
   finalizeEnts();
@@ -3368,13 +3383,14 @@ function nearestInteract(){
     const d = Math.hypot(dx, dz); if (d > 1.7) continue; if (d > 0.7 && (dx * fx + dz * fz) / d < 0.3) continue;
     if (d < bd - 0.2){ bd = d; best = {k:e.type, o:e}; }
   }
-  if (!best || bd > 1.0){ const v = nearestVeh(1.5); if (v){ const pu = nearPump(2.6); if (pu && v.fuel < 99.5 && Math.hypot(v.x - pu.x, v.z - pu.z) < 9) return {k:'pump', o:v}; return {k:'car', o:v}; } }
+  if (!best || bd > 1.0){ const v = nearestVeh(1.4); if (v){ const pu = nearPump(2.6); if (pu && !v.occ && v.fuel < 99.5 && Math.hypot(v.x - pu.x, v.z - pu.z) < 9) return {k:'pump', o:v}; return {k:'car', o:v}; } }
   return best;
 }
 function interactLabel(it){
   const pre = (isTouch ? 'USAR' : 'E') + ' — ';
   if (it.k === 'fin'){ const w = weapon(); return pre + (w.fogo && P.equip.mag > 0 ? 'Finalizar com um tiro na cabeça' : P.equip ? 'Finalizar o zumbi caído' : 'Finalizar com um pisão na cabeça'); }
-  if (it.k === 'exit') return pre + 'Sair do carro · ' + Math.round(it.o.spd * 3.6) + ' km/h';
+  if (it.k === 'exit') return pre + 'Sair do carro · ' + Math.round((P.pass ? (it.o.rspd || 0) : Math.abs(it.o.spd)) * 3.6) + ' km/h';
+  if (it.k === 'car' && it.o.occ) return pre + 'Entrar de carona';
   if (it.k === 'car') return it.o.hp <= 0 ? pre + 'Carro destruído (conserte com caixa de ferramentas)' : pre + 'Entrar no carro (gasolina ' + Math.round(it.o.fuel) + '% · lataria ' + Math.round(it.o.hp) + '%)';
   if (it.k === 'pump') return pre + 'Encher o tanque na bomba (' + Math.round(it.o.fuel) + '%)';
   if (it.k === 'c') return pre + 'Revistar ' + it.o.nome + (it.o.aberto && !it.o.loot.length ? ' (vazio)' : '');
@@ -3534,6 +3550,9 @@ function drawRouteMini(g, tx, tz){
 
 // ================= CARROS =================
 const CARCOL = [0x8a1f1f, 0x1f3f7a, 0xd8d8d0, 0x2a2a2a, 0x3f6a3a, 0xb07a20, 0x6a6a70, 0x5a2a5a, 0x2a6a7a];
+let GLASSM = null;
+// lugares (x, altura do quadril, z) de cada banco: 0 = motorista
+const SEATS = {sedan:[[0.42, 0.5, -0.12], [-0.42, 0.5, -0.12], [0.42, 0.5, -1.0], [-0.42, 0.5, -1.0]], pick:[[0.42, 0.55, 0.32], [-0.42, 0.55, 0.32], [0.45, 1.0, -1.0], [-0.45, 1.0, -1.6]]};
 function makeVehMesh(col, kind){
   const g = new THREE.Group(); g.rotation.order = 'YXZ';
   const mat = new THREE.MeshLambertMaterial({vertexColors:true}), dark = 0x1c2228, trim = 0x202020;
@@ -3542,9 +3561,16 @@ function makeVehMesh(col, kind){
     [GB, 0, 0.5, 2.12, 1.86, 0.26, 0.08, trim, 0, 0], [GB, 0, 0.5, -2.12, 1.86, 0.26, 0.08, trim, 0, 0],
     [GB, 0.62, 0.72, 2.13, 0.36, 0.14, 0.04, 0xfff4c0, 0, 0], [GB, -0.62, 0.72, 2.13, 0.36, 0.14, 0.04, 0xfff4c0, 0, 0],
     [GB, 0.68, 0.74, -2.12, 0.3, 0.14, 0.04, 0xb01010, 0, 0], [GB, -0.68, 0.74, -2.12, 0.3, 0.14, 0.04, 0xb01010, 0, 0]];
-  if (isPk){ parts.push([GB, 0, 1.25, 0.55, 1.8, 0.66, 1.6, dark, 0, 0], [GB, 0, 1.6, 0.55, 1.82, 0.06, 1.5, col, 0, 0], [GB, 0, 1.05, -1.25, 1.84, 0.28, 1.6, col, 0, 0], [GB, 0, 0.95, -1.25, 1.6, 0.06, 1.5, 0x2a2018, 0, 0]); }
-  else parts.push([GB, 0, 1.2, -0.25, 1.78, 0.6, 2.2, dark, 0, 0], [GB, 0, 1.52, -0.3, 1.8, 0.06, 1.9, col, 0, 0], [GB, 0, 1.0, 1.35, 1.86, 0.14, 1.3, col, 0, 0]);
+  // cabine: colunas, teto, bancos e painel; os vidros são transparentes (dá para ver quem está dentro)
+  const cab = isPk ? {z:0.55, L:1.6, y:1.25, h:0.66} : {z:-0.25, L:2.2, y:1.2, h:0.6}, seat = 0x2a2a2e, top = cab.y + cab.h / 2;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push([GB, sx * 0.86, cab.y, cab.z + sz * (cab.L / 2 - 0.05), 0.07, cab.h, 0.08, trim, 0, 0]);
+  parts.push([GB, 0, top + 0.03, cab.z, 1.8, 0.06, cab.L - 0.1, col, 0, 0], [GB, 0, 0.96, cab.z + cab.L / 2 - 0.12, 1.7, 0.14, 0.2, 0x1a1a1a, 0, 0], [GB, 0.42, 1.08, cab.z + cab.L / 2 - 0.3, 0.32, 0.3, 0.04, 0x111111, -0.5, 0]);
+  const fz = isPk ? 0.4 : -0.05; for (const sx of [-0.42, 0.42]) parts.push([GB, sx, 1.08, fz - 0.42, 0.5, 0.5, 0.1, seat, 0, 0]);
+  if (!isPk) parts.push([GB, 0, 1.08, -1.3, 1.5, 0.5, 0.1, seat, 0, 0], [GB, 0, 1.0, 1.35, 1.86, 0.14, 1.3, col, 0, 0]);
+  else parts.push([GB, 0, 1.05, -1.25, 1.84, 0.28, 1.6, col, 0, 0], [GB, 0, 0.95, -1.25, 1.6, 0.06, 1.5, 0x2a2018, 0, 0]);
   g.add(new THREE.Mesh(mergedGeo(parts), mat));
+  if (!GLASSM) GLASSM = new THREE.MeshLambertMaterial({color:0xa8c4d4, transparent:true, opacity:0.26, depthWrite:false});
+  const gl = new THREE.Mesh(mergedGeo([[GB, 0, cab.y, cab.z, 1.74, cab.h - 0.02, cab.L - 0.06, 0xffffff, 0, 0]]), GLASSM); gl.renderOrder = 3; g.add(gl);
   const wg = mergedGeo([[GCY, 0, 0, 0, 0.72, 0.24, 0.72, 0x151515, 0, 0], [GB, 0, 0, 0, 0.36, 0.26, 0.12, 0x8a8a8a, 0, 0]]), wheels = [];
   for (const [x, z] of [[0.86, 1.35], [-0.86, 1.35], [0.86, -1.35], [-0.86, -1.35]]){
     const st = new THREE.Group(); st.position.set(x, 0.36, z); const sp = new THREE.Group(); sp.rotation.order = 'XYZ'; st.add(sp);
@@ -3554,7 +3580,7 @@ function makeVehMesh(col, kind){
 }
 function addVehicle(x, z, yaw, o){
   o = o || {}; const col = o.col || pick(CARCOL), kind = o.kind || (Math.random() < 0.25 ? 'pick' : 'sedan'), m = makeVehMesh(col, kind);
-  const v = {x, z, y:terrainAt(x, z), yaw, pitch:0, spd:0, steer:0, spin:0, fuel:o.fuel !== undefined ? o.fuel : Math.round(R(4, 60)), hp:o.hp !== undefined ? o.hp : Math.round(R(40, 100)), g:m.g, wheels:m.wheels, kind, hitT:0};
+  const v = {x, z, y:o.y !== undefined ? o.y : terrainAt(x, z), yaw, pitch:0, spd:0, steer:0, spin:0, fuel:o.fuel !== undefined ? o.fuel : Math.round(R(4, 60)), hp:o.hp !== undefined ? o.hp : Math.round(R(40, 100)), g:m.g, wheels:m.wheels, kind, hitT:0};
   v.y = groundAt(x, z, 0.5, v.y + 0.5); v.g.position.set(x, v.y, z); v.g.rotation.y = yaw; scene.add(v.g); VEH.push(v); return v;
 }
 function vehFree(x, z, yaw){
@@ -3585,12 +3611,25 @@ function spawnVehicles(){
   // carros no posto
   for (const pu of pumps) if (Math.random() < 0.5){ const yaw = R(0, 6.28); for (const k of [3, -3]){ if (vehFree(pu.x + k, pu.z, yaw)){ addVehicle(pu.x + k, pu.z, yaw); break; } } }
 }
-function nearestVeh(r){ let best = null, bd = r; for (const v of VEH){ const d = Math.hypot(v.x - P.x, v.z - P.z) - 1.2; if (d < bd && Math.abs(v.y - P.y) < 1.6){ bd = d; best = v; } } return best; }
+function nearestVeh(r){ let best = null, bd = r;
+  for (const v of VEH){ const dx = P.x - v.x, dz = P.z - v.z; if (Math.abs(dx) > 5 || Math.abs(dz) > 5) continue; const c = Math.cos(v.yaw), sn = Math.sin(v.yaw), lx = dx * c - dz * sn, lz = dx * sn + dz * c;
+    const d = Math.hypot(Math.max(0, Math.abs(lx) - 0.95), Math.max(0, Math.abs(lz) - 2.15)); if (d < bd && Math.abs(v.y - P.y) < 2.0){ bd = d; best = v; } }
+  return best; }
 function nearPump(r){ for (const pu of pumps) if (Math.hypot(pu.x - P.x, pu.z - P.z) < r) return pu; return null; }
+function seatsTaken(v){ const t = new Set(); if (typeof NET !== 'undefined') for (const p of NET.peers.values()) if (p.rp && p.rp.car === v) t.add(p.rp.seat || 0); return t; }
 function enterCar(v){
+  if (v.occ){   // um amigo está dirigindo: entra de carona
+    const t = seatsTaken(v), seat = [1, 2, 3].find(k => !t.has(k));
+    if (!seat){ log('O carro está cheio.', '#ffd27a'); return; }
+    if (P.equip && P.aim) P.aim = false;
+    P.car = v; P.pass = true; P.seat = seat; P.agach = false; P.reload = 0; P.vy = 0; P.climb = null; P.yaw = v.yaw + Math.PI; P.pitch = -0.12; P.cam = null;
+    sfx('car_door_open', 0.6) || noiseSnd(0.1, 0.1, 700); setTimeout(() => sfx('car_door_close', 0.6), 350);
+    log(seat === 1 ? 'Você entrou de carona no banco da frente. E para sair.' : (v.kind === 'pick' ? 'Você subiu na caçamba. E para sair.' : 'Você entrou de carona no banco de trás. E para sair.'), '#9fd4ff');
+    return;
+  }
   if (v.hp <= 0){ log('Este carro está destruído. Use uma CAIXA DE FERRAMENTAS para consertar.', '#ffb070'); return; }
   if (P.equip && P.aim) P.aim = false;
-  P.car = v; v.occ = true; P.agach = false; P.reload = 0; P.vy = 0; P.climb = null; P.lookHold = 0; P.yaw = v.yaw + Math.PI; P.pitch = -0.12; P.cam = null; P._ly = P.yaw; P._lp = P.pitch;
+  P.car = v; P.pass = false; P.seat = 0; v.occ = true; P.agach = false; P.reload = 0; P.vy = 0; P.climb = null; P.lookHold = 0; P.yaw = v.yaw + Math.PI; P.pitch = -0.12; P.cam = null; P._ly = P.yaw; P._lp = P.pitch;
   sfx('car_door_open', 0.6) || noiseSnd(0.1, 0.1, 700);
   setTimeout(() => sfx('car_door_close', 0.6), 350);
   if (v.fuel <= 0) log('O carro está sem gasolina. Procure um GALÃO ou um posto.', '#ffd27a');
@@ -3599,13 +3638,15 @@ function enterCar(v){
 }
 function exitCar(){
   const v = P.car; if (!v) return;
-  if (Math.abs(v.spd) > 6){ log('Muito rápido para sair! Freie primeiro.', '#ffd27a'); return; }
+  if (Math.abs(P.pass ? (v.rspd || 0) : v.spd) > 6){ log('Muito rápido para sair! Freie primeiro.', '#ffd27a'); return; }
   const sn = Math.sin(v.yaw), c = Math.cos(v.yaw);
   const spots = [[1.55, 0.3], [-1.55, 0.3], [1.55, -1.2], [-1.55, -1.2], [0, 3.0], [0, -3.0], [2.4, 0], [-2.4, 0]];
   let ok = null; CURV = null;
   for (const [lr, lf] of spots){ const x = v.x + c * lr + sn * lf, z = v.z - sn * lr + c * lf, y = groundAt(x, z, 0.3, v.y + 0.5); if (Math.abs(y - v.y) < 1.2 && !hitAny(x, z, 0.36, y + 0.05)){ ok = [x, z, y]; break; } }
   if (!ok){ log('Não tem espaço para sair do carro aqui.', '#ffd27a'); return; }
-  P.x = ok[0]; P.z = ok[1]; P.y = P.ground = ok[2]; P.vy = 0; P.car = null; v.occ = false; v.engOn = false;
+  P.x = ok[0]; P.z = ok[1]; P.y = P.ground = ok[2]; P.vy = 0; P.car = null;
+  if (P.pass){ P.pass = false; P.seat = 0; sfx('car_door_close', 0.6); P.cam = null; return; }
+  v.occ = false; v.engOn = false;
   stopEngine(v); sfx('car_door_close', 0.6); P.cam = null;
 }
 function stopEngine(v){ if (v.eng){ try { v.eng.g.gain.setTargetAtTime(0, AC.currentTime, 0.08); const e = v.eng; setTimeout(() => { try { e.src.stop(); } catch(_){} }, 400); } catch(e){} v.eng = null; } }
@@ -3707,7 +3748,7 @@ function carCamera(dt){
   camera.position.set(P.cam.x + R(-1, 1) * sh, P.cam.y + R(-1, 1) * sh, P.cam.z);
   camera.rotation.set(P.pitch - 0.1, P.yaw, 0);
   const fov = CFG.fov + Math.min(14, Math.abs(v.spd) * 0.6); if (Math.abs(camera.fov - fov) > 0.05){ camera.fov = fov; camera.updateProjectionMatrix(); }
-  pm.g.visible = pm.ag.visible = false; vm.visible = false;
+  vm.visible = false;   // o boneco aparece sentado (vidros transparentes)
 }
 
 // ================= CÂMERA E PERSONAGEM =================
@@ -3769,8 +3810,20 @@ function buildPlayerModel(){
   scene.add(g); return {lamp, lensMat, glow, g, bod, chest, ag, ayaw:0, lL, lR, kL, kR, aL, aR, fL, fR, hold, gun, carry, wc, w, fl, walk:0, yaw:0, gp:GPOSE.curta.idle.slice(), bl:0};
 }
 const _gpv = new THREE.Vector3();
+// sentado no carro (motorista segura o volante; carona com as mãos no colo)
+function seatPose(m, v, seat, drive){
+  const S = (SEATS[v.kind] || SEATS.sedan)[seat] || SEATS.sedan[1], sn = Math.sin(v.yaw), c = Math.cos(v.yaw);
+  m.g.visible = true; m.ag.visible = false; m.hold.visible = false; m.carry.visible = false; m.glow.visible = false;
+  m.g.position.set(v.x + S[0] * c + S[2] * sn, v.y + S[1] - 0.82, v.z - S[0] * sn + S[2] * c); m.g.rotation.set(-(v.pitch || 0), v.yaw, 0);
+  m.bod.rotation.set(0, 0, 0); m.bod.position.set(0, 0, 0); m.chest.rotation.set(0.05, 0, 0);
+  m.lL.rotation.set(-1.5, 0, 0.06); m.lR.rotation.set(-1.5, 0, -0.06); m.kL.rotation.set(1.5, 0, 0); m.kR.rotation.set(1.5, 0, 0);
+  if (drive){ const st = (v.steer || 0) * 0.6; m.aL.rotation.set(0.55 + st, 0, 0); m.aR.rotation.set(0.55 - st, 0, 0); m.fL.rotation.set(-0.35, 0, 0); m.fR.rotation.set(-0.35, 0, 0); }
+  else { m.aL.rotation.set(1.15, 0, 0.1); m.aR.rotation.set(1.15, 0, -0.1); m.fL.rotation.set(-0.9, 0, 0); m.fR.rotation.set(-0.9, 0, 0); }
+}
 function updatePlayerModel(dt, moving, spd, air){
+  if (P.car && P.car.g){ seatPose(pm, P.car, P.seat || 0, !P.pass); return; }
   if (P.car){ pm.g.visible = pm.ag.visible = false; return; }
+  pm.hold.visible = true;
   const g = pm.g, b = pm.bod, w = weapon(), id = P.equip ? P.equip.id : 'punhos', hs = CFG.shoulder === 'esquerdo' ? -1 : 1;
   g.position.set(P.x, P.y, P.z); pm.ag.position.set(P.x, P.y, P.z);
   // quadril vai para onde anda; a arma/tronco olham para a mira só quando mirando/atacando
@@ -3944,6 +3997,7 @@ function cullChunks(){
   const lim = scene.fog.far + 32;
   for (const c of chunks.values()) if (c.mesh) c.mesh.visible = Math.hypot(c.cx - P.x, c.cz - P.z) < lim;
   for (const s of signs) s.visible = Math.hypot(s.position.x - P.x, s.position.z - P.z) < lim;
+  const lv = Math.min(lim, 150); for (const v of VEH) v.g.visible = v === P.car || Math.hypot(v.x - P.x, v.z - P.z) < lv;
 }
 // relógio do jogo (com a opção de noite eterna: pula o dia e volta para o anoitecer)
 function tickClock(dt){
@@ -3966,7 +4020,7 @@ function update(dt){
   let spd = P.agach ? 2.1 : sprint ? 7.0 : 4.2; if (P.fome < 10 || P.sede < 10 || P.vida < 25) spd *= 0.8; if (P.aim) spd *= 0.55;
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
   const air = !!P.climb || P.y > P.ground + 0.01 || P.vy !== 0;
-  if (P.car){ updateDrive(dt, mx, mz); P.crossHid = true; }
+  if (P.car){ if (P.pass){ const v = P.car; P.x = v.x; P.z = v.z; P.y = P.ground = v.y; P.vy = 0; } else updateDrive(dt, mx, mz); P.crossHid = true; }
   else if (P.climb){
     const c = P.climb; c.t += dt; const k = Math.min(1, c.t / c.dur), ky = Math.min(1, k * 1.5), kx = Math.max(0, (k - 0.5) / 0.5);
     if (c.peak){ P.y = c.y0 + (c.y1 - c.y0) * k + c.peak * Math.sin(Math.PI * k); P.x = c.x0 + (c.x1 - c.x0) * k; P.z = c.z0 + (c.z1 - c.z0) * k; }
@@ -4067,6 +4121,7 @@ function update(dt){
     if (CFG.hordesOn && hordes.length < 3 + Math.min(3, day) && Math.random() < 0.06) spawnHorde(Math.max(6, Math.round((day === 0 ? pick([10, 15, 30]) : pick([10, 15, 30, 60])) * Math.min(2, CFG.zPop))), false, 90);
   }
   cullT -= dt; if (cullT <= 0){ cullT = 0.3; cullChunks(); }
+  for (const v of VEH) if (v.trunk){ const t = v.trunk; t.x = v.x - Math.sin(v.yaw) * 2.6; t.z = v.z - Math.cos(v.yaw) * 2.6; t.y = v.y; t.range = 1.5; }
   if (!panel){
     P.itT = (P.itT || 0) - dt; if (P.itT <= 0){ P.itT = 0.1; P.itC = P.act ? null : nearestInteract(); }
     const it = P.itC, pr = $('#prompt');
@@ -4527,7 +4582,8 @@ function netMyState(){
   const w = P.equip ? P.equip.id : 'punhos', air = P.y > P.ground + 0.05 || !!P.climb;
   const fl = (P.agach ? 1 : 0) | (P.aim ? 2 : 0) | (air ? 4 : 0) | (P.luz ? 8 : 0) | (P.reload > 0 ? 16 : 0) | (P.dead ? 32 : 0) | (P.act ? 64 : 0) | (P.shoveT > 0 ? 128 : 0) | (P.kick ? 256 : 0);
   const m = {t:'p', n:NET.name, x:r2(P.x), y:r2(P.y), z:r2(P.z), yw:r2(P.yaw), pt:r2(P.pitch), fl, w, sl:P.equip && P.equip.sil ? 1 : 0, hp:Math.round(P.vida), sh:NET.sh, sw:NET.sw, hs:CFG.shoulder === 'esquerdo' ? -1 : 1};
-  if (P.car){ const v = P.car; m.car = [VEH.indexOf(v), r2(v.x), r2(v.y), r2(v.z), r2(v.yaw), r2(v.pitch), r2(v.spd)]; }
+  if (P.car && !P.pass){ const v = P.car; m.car = [VEH.indexOf(v), r2(v.x), r2(v.y), r2(v.z), r2(v.yaw), r2(v.pitch), r2(v.spd)]; }
+  else if (P.car){ m.rd = [VEH.indexOf(P.car), P.seat]; }
   if (NET.noise){ m.nz = [r2(NET.noise[0]), r2(NET.noise[1]), r2(NET.noise[2])]; NET.noise = null; }
   if (NET.role === 'host'){
     m.h = 1; m.gm = Math.round(gameMin * 10) / 10; m.rn = rainOn ? 1 : 0; m.rk = r2(rainK);
@@ -4709,7 +4765,7 @@ function netDrawPeers(dt){
     rp.reload = s.fl & 16 ? Math.max(0.3, rp.reload) : 0; rp.act = s.fl & 64 ? {t:now / 1000} : null; rp.shoveT = s.fl & 128 ? 0.2 : 0; rp.kick = s.fl & 256 ? {t:0.2} : null;
     rp.equip = s.w && s.w !== 'punhos' && ITEMS[s.w] ? {id:s.w, sil:!!s.sl} : null; rp.vy = s.fl & 4 ? 1 : 0; rp.ground = s.fl & 4 ? rp.y - 1 : rp.y;
     // proxy para a IA dos zumbis (no anfitrião)
-    Object.assign(p.proxy, {x:rp.x, y:rp.y, z:rp.z, agach:rp.agach, eye:rp.agach ? 1.05 : 1.65, mvx:rp.mvx, mvz:rp.mvz, luz:rp.luz, car:s.car ? true : null});
+    Object.assign(p.proxy, {x:rp.x, y:rp.y, z:rp.z, agach:rp.agach, eye:rp.agach ? 1.05 : 1.65, mvx:rp.mvx, mvz:rp.mvz, luz:rp.luz, car:s.car || s.rd ? true : null});
     p.x = rp.x; p.z = rp.z;
     // tiros e golpes do amigo
     if (s.sh > p.sh){ p.sh = s.sh; rp.recoil = 1; p.swing = 1;
@@ -4723,9 +4779,12 @@ function netDrawPeers(dt){
       const c = s.car, kk = Math.min(1, dt * 10);
       if (Math.hypot(c[1] - v.x, c[3] - v.z) > 8){ v.x = c[1]; v.z = c[3]; v.y = c[2]; } else { v.x += (c[1] - v.x) * kk; v.y += (c[2] - v.y) * kk; v.z += (c[3] - v.z) * kk; }
       v.yaw = lerpAng(v.yaw, c[4], kk); v.pitch = c[5]; v.g.position.set(v.x, v.y, v.z); v.g.rotation.set(-v.pitch, v.yaw, 0);
-      v.spin += c[6] * dt / 0.36; for (const wh of v.wheels) wh.sp.rotation.x = v.spin;
-      rp.car = true;
-    } else { if (p.carV){ p.carV.occ = false; p.carV = null; } rp.car = null; }
+      v.spin += c[6] * dt / 0.36; for (const wh of v.wheels) wh.sp.rotation.x = v.spin; v.rspd = Math.abs(c[6]); v.steer = 0;
+      rp.car = v; rp.seat = 0; rp.pass = false;
+    } else {
+      if (p.carV){ p.carV.occ = false; p.carV = null; }
+      if (s.rd && VEH[s.rd[0]]){ rp.car = VEH[s.rd[0]]; rp.seat = s.rd[1]; rp.pass = true; } else { rp.car = null; rp.pass = false; }
+    }
     // desenha o boneco do amigo com o mesmo código do seu
     const sP = P, sPm = pm, sSw = swingT, sMz = muzzleT, sSh = CFG.shoulder;
     P = rp; pm = p.pm; swingT = p.swing; muzzleT = p.muz; CFG.shoulder = s.hs < 0 ? 'esquerdo' : 'direito';
