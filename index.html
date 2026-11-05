@@ -27,7 +27,7 @@ canvas{display:block}
 .btn.g{background:#333;border-color:#666}
 .btn.s{font-size:13px;padding:5px 10px;margin:0;letter-spacing:0}
 #start{overflow-y:auto;justify-content:flex-start}#start>:first-child{margin-top:auto}#start>:last-child{margin-bottom:auto}#start #ctrls{max-height:30vh;overflow-y:auto}
-#mpBox{margin-top:16px;text-align:center}#mpBox .mpT{font-weight:bold;letter-spacing:2px;color:#e3b55b;margin-bottom:8px}
+#mpBox{margin-top:16px;text-align:center}#svBox{margin-top:14px;text-align:center;width:min(640px,94vw)}#svList{max-height:28vh;overflow-y:auto;text-align:left}.svR{display:flex;align-items:center;gap:6px;padding:6px 4px;border-top:1px solid rgba(255,255,255,.1)}.svN{flex:1;min-width:0}.svN b{display:block;color:#f0e6d0}.svN span{font-size:11px;color:#b8b0a0}.svN i{color:#ffd27a}.svE{font-size:12px;color:#b8b0a0;text-align:center}.svR .btn.s{margin:0;padding:5px 8px;font-size:12px}#mpBox .mpT{font-weight:bold;letter-spacing:2px;color:#e3b55b;margin-bottom:8px}
 #mpBox .mpR{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:6px 0}
 #mpBox input{background:#1a1814;border:1px solid #5a4f3e;color:#f0e6d0;border-radius:4px;padding:7px 10px;font:inherit;font-size:15px}
 #mpBox .mpB{padding:8px 16px;font-size:14px}#mpBox .mpOu{color:#8a8070;font-size:13px}#mpMsg{min-height:18px;font-size:13px;margin-top:6px}
@@ -144,7 +144,8 @@ body.pcEd #hud .pce.sel{outline:3px solid #e3b55b}
   <h1>ZONA MORTA</h1>
   <div class="sub">SOBREVIVÊNCIA ZUMBI EM PRIMEIRA PESSOA</div>
   <div class="box" id="ctrls"></div>
-  <div class="row"><button class="btn" id="bStart">JOGAR SOZINHO</button><button class="btn g" id="bGuide">VER ARMAS</button><button class="btn g" id="bCfg">CONFIGURAÇÕES</button></div>
+  <div class="row"><button class="btn" id="bStart">NOVO JOGO SOZINHO</button><button class="btn g" id="bGuide">VER ARMAS</button><button class="btn g" id="bCfg">CONFIGURAÇÕES</button></div>
+  <div class="box" id="svBox"><div class="mpT">💾 MUNDOS SALVOS</div><div id="svList"></div></div>
   <div class="box" id="mpBox">
     <div class="mpT">👥 JOGAR COM AMIGOS</div>
     <div class="mpR"><label>Seu nome</label><input id="mpName" maxlength="14" placeholder="Ex.: Gustavo" autocomplete="off"></div>
@@ -154,7 +155,7 @@ body.pcEd #hud .pce.sel{outline:3px solid #e3b55b}
   </div>
 </div>
 <div id="pause" class="ov"><h2>PAUSADO</h2><div class="box" id="pauseNet" style="display:none;text-align:center;margin-top:10px"></div><div class="row"><button class="btn" id="bResume">CONTINUAR</button><button class="btn g" id="bGuide2">VER ARMAS</button><button class="btn g" id="bCfg2">CONFIGURAÇÕES</button><button class="btn g" id="bHud2" style="display:none">CONTROLES</button><button class="btn g" id="bRoom2">MUNDO / SALA</button><button class="btn g" id="bMenu2">SAIR PARA O MENU</button></div></div>
-<div id="dead" class="ov"><h1>VOCÊ MORREU</h1><div class="box" id="deadTxt" style="margin-top:12px"></div><div class="row"><button class="btn" id="bRetry">TENTAR DE NOVO</button><button class="btn g" id="bMenu3">MENU</button></div></div>
+<div id="dead" class="ov"><h1>VOCÊ MORREU</h1><div class="box" id="deadTxt" style="margin-top:12px"></div><div class="row"><button class="btn" id="bRetry">RENASCER AQUI PERTO</button><button class="btn g" id="bMenu3">MENU</button></div></div>
 
 <div id="bldBar"></div>
 <div id="hud">
@@ -226,7 +227,7 @@ const CFG_DEF = {crossStyle:'circulo', crossColor:'#ffffff', crossSize:1, crossT
   quality:'auto', viewDist:1, rainOn:true, blood:true, showMini:true, showMoods:true, showHot:true, hudScale:1,
   volMaster:0.8, volFx:1, volAmb:1, heartbeat:true, realSfx:true,
   zSpeed:1, zPop:1, zDmg:1, surround:true, dayLen:1, hordesOn:true, miniRotate:true, miniZoom:1,
-  diff:'normal', startH:8, nightLock:false, dayLock:false, fogNight:1, rainMode:'auto', animals:1, hordeN:6, hordeSz:1, buildFree:false};
+  diff:'normal', startH:8, nightLock:false, dayLock:false, ffire:false, fogNight:1, rainMode:'auto', animals:1, hordeN:6, hordeSz:1, buildFree:false};
 let CFG = Object.assign({}, CFG_DEF);
 try { Object.assign(CFG, JSON.parse(localStorage.getItem('zm_cfg') || '{}')); } catch(e){}
 CFG.hordeN = clamp(Math.round(+CFG.hordeN || 6), 1, 12); CFG.hordeSz = [0.3, 0.5, 0.75, 1, 1.5, 2, 3].reduce((a, b) => Math.abs(b - CFG.hordeSz) < Math.abs(a - CFG.hordeSz) ? b : a, 1);
@@ -244,10 +245,10 @@ const CFG_UI = [
     ['startH', 'Horário (muda na hora)', 'sel', [[6, 'Amanhecer (6h)'], [8, 'Manhã (8h)'], [12, 'Meio-dia'], [17, 'Fim de tarde (17h)'], [20, 'Anoitecer (20h)'], [23, 'Noite (23h)'], [2, 'Madrugada (2h)']]],
     ['nightLock', 'Noite eterna (sempre de noite)', 'chk'], ['dayLock', 'Dia eterno (sempre de dia)', 'chk'], ['dayLen', 'Duração do dia (×)', 'range', 0.5, 4, 0.25],
     ['fogNight', 'Neblina à noite', 'sel', [[1, 'Normal'], [1.6, 'Forte'], [2.4, 'Muito forte']]], ['rainMode', 'Chuva', 'sel', [['auto', 'Vem e vai'], ['sempre', 'Sempre chovendo'], ['nunca', 'Nunca']]],
-    ['animals', 'Animais para caçar', 'range', 0.5, 3, 0.1], ['buildFree', 'Construir sem gastar material (modo livre)', 'chk']], 'room']
+    ['animals', 'Animais para caçar', 'range', 0.5, 3, 0.1], ['buildFree', 'Construir sem gastar material (modo livre)', 'chk'], ['ffire', 'Fogo amigo (tiros e golpes acertam os amigos — para jogar x1)', 'chk']], 'room']
 ];
 let cfgTab = 0, MASTER = null, FXG = null, AMBG = null;
-const ROOM_KEYS = ['diff', 'zPop', 'zSpeed', 'zDmg', 'surround', 'hordesOn', 'hordeN', 'hordeSz', 'startH', 'nightLock', 'dayLock', 'dayLen', 'fogNight', 'rainMode', 'animals', 'buildFree'];
+const ROOM_KEYS = ['diff', 'zPop', 'zSpeed', 'zDmg', 'surround', 'hordesOn', 'hordeN', 'hordeSz', 'startH', 'nightLock', 'dayLock', 'dayLen', 'fogNight', 'rainMode', 'animals', 'buildFree', 'ffire'];
 const DIFFS = {facil:{zPop:0.6, zSpeed:0.8, zDmg:0.6, surround:false}, normal:{zPop:1, zSpeed:1, zDmg:1, surround:true}, dificil:{zPop:1.6, zSpeed:1.2, zDmg:1.4, surround:true}, pesadelo:{zPop:2.6, zSpeed:1.45, zDmg:2, surround:true}};
 const ROOM_TAB = CFG_UI.findIndex(t => t[2] === 'room');
 const roomLocked = () => typeof NET !== 'undefined' && NET.on && NET.role === 'join';
@@ -286,12 +287,12 @@ const ITEMS = {
   foice:{nome:'Foice', tipo:'arma', dano:48, alc:1.8, cd:0.6, dur:45, stam:9, multi:2, kd:0.15, onde:'Fazendas, Celeiros'},
   chave:{nome:'Chave inglesa', tipo:'arma', dano:32, alc:1.6, cd:0.55, dur:80, stam:7, multi:1, kd:0.3, onde:'Garagens, Ferragens, porta-malas'},
   katana:{nome:'Katana', tipo:'arma', dano:70, alc:2.1, cd:0.7, dur:55, stam:12, multi:2, kd:0.2, onde:'Casas de colecionador (muito rara), Loja de armas'},
-  mun9:{nome:'Munição 9mm', tipo:'municao', mun:'9mm', qtd:15},
-  mun556:{nome:'Munição 5.56', tipo:'municao', mun:'5.56', qtd:20},
+  mun9:{nome:'Munição 9mm', tipo:'municao', mun:'9mm', qtd:20},
+  mun556:{nome:'Munição 5.56', tipo:'municao', mun:'5.56', qtd:30},
   flechas:{nome:'Flechas', tipo:'municao', mun:'flecha', qtd:6},
-  mun38:{nome:'Munição .38', tipo:'municao', mun:'.38', qtd:12},
-  cart:{nome:'Cartuchos cal.12', tipo:'municao', mun:'12', qtd:8},
-  mun308:{nome:'Munição .308', tipo:'municao', mun:'.308', qtd:10},
+  mun38:{nome:'Munição .38', tipo:'municao', mun:'.38', qtd:15},
+  cart:{nome:'Cartuchos cal.12', tipo:'municao', mun:'12', qtd:10},
+  mun308:{nome:'Munição .308', tipo:'municao', mun:'.308', qtd:12},
   tabuas:{nome:'Tábuas', tipo:'material', mat:'tabua', qtd:4},
   pregos:{nome:'Pregos', tipo:'material', mat:'prego', qtd:12},
   chapas:{nome:'Chapas de metal', tipo:'material', mat:'chapa', qtd:2}
@@ -300,33 +301,33 @@ const PUNHOS = {nome:'Punhos', dano:9, alc:1.3, cd:0.45, stam:5, multi:1, kd:0.1
 const WEAPON_ORDER = ['faca','chave','martelo','pecabra','cano','taco','pa','foice','facao','machado','katana','marreta','pistola','revolver','smg','espingarda','rifle','fuzil','besta'];
 const CT = {
   geladeira:{nome:'Geladeira', n:[0,3], tab:[['lata',3],['agua',3],['refri',2],['salg',1]]},
-  armario:{nome:'Armário', n:[0,3], tab:[['pregos',0.5],['chave',0.6],['band',3],['remed',2],['antit',0.5],['faca',2],['martelo',1],['mun9',0.6],['lata',2],['salg',2],['cano',1]]},
-  caixa:{nome:'Caixa', n:[0,2], tab:[['tabuas',1],['pregos',1.2],['chave',1],['pa',0.6],['smg',0.15],['flechas',0.3],['taco',2],['cano',2],['martelo',1.5],['pecabra',1.5],['machado',0.8],['facao',0.8],['mun9',1],['cart',0.6],['pistola',0.4],['revolver',0.3]]},
-  portamalas:{nome:'Porta-malas', n:[0,2], tab:[['pregos',0.6],['chapas',0.2],['chave',1.2],['smg',0.12],['mun556',0.15],['pa',0.4],['taco',1],['pecabra',1.5],['agua',2],['mun9',1],['cart',1],['pistola',0.4],['espingarda',0.25],['band',1],['galao',0.9],['ferram',0.4]]},
-  lixeira:{nome:'Lixeira', n:[0,1], tab:[['salg',2],['refri',2],['cano',1],['band',0.5]]},
+  armario:{nome:'Armário', n:[0,3], tab:[['mun9',1],['mun38',0.6],['cart',0.6],['pregos',0.5],['chave',0.6],['band',3],['remed',2],['antit',0.5],['faca',2],['martelo',1],['mun9',0.6],['lata',2],['salg',2],['cano',1]]},
+  caixa:{nome:'Caixa', n:[0,2], tab:[['mun9',1.2],['mun38',0.7],['cart',1],['tabuas',1],['pregos',1.2],['chave',1],['pa',0.6],['smg',0.15],['flechas',0.3],['taco',2],['cano',2],['martelo',1.5],['pecabra',1.5],['machado',0.8],['facao',0.8],['mun9',1],['cart',0.6],['pistola',0.4],['revolver',0.3]]},
+  portamalas:{nome:'Porta-malas', n:[0,2], tab:[['mun9',0.8],['mun38',0.6],['cart',0.8],['pregos',0.6],['chapas',0.2],['chave',1.2],['smg',0.12],['mun556',0.15],['pa',0.4],['taco',1],['pecabra',1.5],['agua',2],['mun9',1],['cart',1],['pistola',0.4],['espingarda',0.25],['band',1],['galao',0.9],['ferram',0.4]]},
+  lixeira:{nome:'Lixeira', n:[0,1], tab:[['mun9',0.25],['salg',2],['refri',2],['cano',1],['band',0.5]]},
   mercado:{nome:'Prateleira', n:[1,4], tab:[['lata',4],['salg',3],['agua',4],['refri',3]]},
   farmacia:{nome:'Prateleira', n:[1,3], tab:[['band',4],['remed',3],['kit',1.5],['agua',1],['antibio',2.2],['antit',2.2]]},
-  delegacia:{nome:'Armário da polícia', n:[1,3], tab:[['smg',1.2],['fuzil',0.35],['mun556',0.8],['pistola',2],['revolver',1.5],['espingarda',1.2],['mun9',3],['mun38',2],['cart',2],['band',1]]},
+  delegacia:{nome:'Armário da polícia', n:[1,3], tab:[['mun9',2],['cart',1.5],['mun556',0.6],['smg',1.2],['fuzil',0.35],['mun556',0.8],['pistola',2],['revolver',1.5],['espingarda',1.2],['mun9',3],['mun38',2],['cart',2],['band',1]]},
   armas:{nome:'Vitrine', n:[1,3], tab:[['smg',1.2],['fuzil',0.6],['mun556',1.4],['besta',0.9],['flechas',1.5],['katana',0.4],['pistola',2],['revolver',2],['espingarda',1.5],['rifle',1.2],['mun9',2],['mun38',2],['cart',2],['mun308',2],['facao',1]]},
   ferragem:{nome:'Prateleira', n:[1,3], tab:[['tabuas',2.4],['pregos',3],['chapas',2.2],['chave',1.5],['pa',1.2],['foice',0.8],['martelo',2],['pecabra',2],['machado',1.5],['marreta',1],['facao',1],['cano',1],['ferram',1.2],['galao',0.6]]},
-  balcao:{nome:'Balcão', n:[0,2], tab:[['salg',2],['refri',2],['mun9',1],['band',1],['galao',0.6],['antit',0.4]]},
+  balcao:{nome:'Balcão', n:[0,2], tab:[['mun9',0.8],['mun38',0.5],['salg',2],['refri',2],['mun9',1],['band',1],['galao',0.6],['antit',0.4]]},
   cozinha:{nome:'Armário da cozinha', n:[0,3], tab:[['lata',3],['salg',2],['faca',1.5],['agua',1],['refri',1]]},
-  guardaroupa:{nome:'Guarda-roupa', n:[0,2], tab:[['katana',0.05],['smg',0.04],['band',2],['taco',0.6],['revolver',0.15],['mun38',0.3],['remed',0.5],['pecabra',0.3]]},
+  guardaroupa:{nome:'Guarda-roupa', n:[0,2], tab:[['mun9',0.7],['mun38',0.6],['cart',0.4],['katana',0.05],['smg',0.04],['band',2],['taco',0.6],['revolver',0.15],['mun38',0.3],['remed',0.5],['pecabra',0.3]]},
   banheiro:{nome:'Armário do banheiro', n:[0,2], tab:[['band',3],['remed',3],['kit',0.4],['antit',1],['antibio',0.3]]},
-  garagem:{nome:'Prateleira da garagem', n:[0,2], tab:[['tabuas',1.6],['pregos',1.8],['chapas',1],['chave',1.5],['pa',1.2],['foice',0.4],['martelo',1.5],['pecabra',1],['machado',0.5],['cano',1],['marreta',0.3],['galao',1.3],['ferram',0.9]]},
-  esportes:{nome:'Prateleira', n:[1,3], tab:[['besta',0.6],['flechas',1.4],['taco',3],['cano',1],['facao',1],['agua',2],['salg',1]]},
+  garagem:{nome:'Prateleira da garagem', n:[0,2], tab:[['cart',0.9],['mun9',0.6],['mun308',0.3],['tabuas',1.6],['pregos',1.8],['chapas',1],['chave',1.5],['pa',1.2],['foice',0.4],['martelo',1.5],['pecabra',1],['machado',0.5],['cano',1],['marreta',0.3],['galao',1.3],['ferram',0.9]]},
+  esportes:{nome:'Prateleira', n:[1,3], tab:[['cart',1],['mun308',0.5],['besta',0.6],['flechas',1.4],['taco',3],['cano',1],['facao',1],['agua',2],['salg',1]]},
   roupas:{nome:'Arara de roupas', n:[0,2], tab:[['band',3],['remed',0.5],['salg',0.5]]},
   lanchonete:{nome:'Balcão', n:[1,3], tab:[['lata',2],['salg',3],['refri',3],['agua',2]]},
   igreja:{nome:'Caixa de doações', n:[1,3], tab:[['lata',3],['agua',3],['band',2],['remed',1],['antit',0.6],['antibio',0.3]]},
-  caverna:{nome:'Mochila abandonada', n:[1,3], tab:[['smg',0.3],['mun556',0.4],['flechas',0.6],['lata',2],['agua',2],['band',2],['kit',0.6],['rifle',0.4],['mun308',1],['pistola',0.5],['mun9',1.5],['machado',0.5],['marreta',0.2]]},
-  celeiro:{nome:'Bancada', n:[1,3], tab:[['tabuas',2.2],['pregos',1.5],['chapas',0.7],['foice',1.5],['pa',1.4],['galao',0.9],['ferram',0.5],['machado',1.5],['marreta',0.8],['pecabra',1.2],['facao',1],['martelo',1.5],['espingarda',0.6],['cart',1.5],['lata',1],['agua',1]]},
-  despensa:{nome:'Despensa', n:[1,3], tab:[['lata',3],['agua',2],['carneA',0.6],['salg',1],['cart',0.7]]},
+  caverna:{nome:'Mochila abandonada', n:[1,3], tab:[['cart',0.8],['mun308',0.6],['smg',0.3],['mun556',0.4],['flechas',0.6],['lata',2],['agua',2],['band',2],['kit',0.6],['rifle',0.4],['mun308',1],['pistola',0.5],['mun9',1.5],['machado',0.5],['marreta',0.2]]},
+  celeiro:{nome:'Bancada', n:[1,3], tab:[['cart',1.2],['mun308',0.8],['tabuas',2.2],['pregos',1.5],['chapas',0.7],['foice',1.5],['pa',1.4],['galao',0.9],['ferram',0.5],['machado',1.5],['marreta',0.8],['pecabra',1.2],['facao',1],['martelo',1.5],['espingarda',0.6],['cart',1.5],['lata',1],['agua',1]]},
+  despensa:{nome:'Despensa', n:[1,3], tab:[['cart',0.6],['mun9',0.4],['lata',3],['agua',2],['carneA',0.6],['salg',1],['cart',0.7]]},
   mirante:{nome:'Caixa de suprimentos', n:[2,4], tab:[['fuzil',0.25],['mun556',0.8],['besta',0.4],['flechas',0.8],['antibio',0.7],['agua',2],['lata',2],['kit',1],['rifle',0.6],['mun308',1.5],['espingarda',0.5],['cart',1]]},
-  estacao:{nome:'Bilheteria', n:[0,3], tab:[['lata',2],['agua',2],['refri',2],['salg',2],['band',1.5],['mun9',1],['remed',0.8],['smg',0.12],['chave',0.6]]},
-  vagao:{nome:'Carga do vagão', n:[1,3], tab:[['tabuas',1.5],['chapas',1],['pregos',0.8],['lata',3],['agua',2],['galao',1.2],['ferram',1],['pa',0.6],['pecabra',0.8],['machado',0.4],['cart',0.6],['mun556',0.3],['kit',0.3]]},
+  estacao:{nome:'Bilheteria', n:[0,3], tab:[['mun9',0.8],['mun38',0.5],['lata',2],['agua',2],['refri',2],['salg',2],['band',1.5],['mun9',1],['remed',0.8],['smg',0.12],['chave',0.6]]},
+  vagao:{nome:'Carga do vagão', n:[1,3], tab:[['mun9',0.8],['cart',0.6],['tabuas',1.5],['chapas',1],['pregos',0.8],['lata',3],['agua',2],['galao',1.2],['ferram',1],['pa',0.6],['pecabra',0.8],['machado',0.4],['cart',0.6],['mun556',0.3],['kit',0.3]]},
   militar:{nome:'Caixa militar', n:[2,4], tab:[['chapas',1.2],['fuzil',0.8],['mun556',3],['smg',0.8],['mun9',2],['kit',1.2],['band',2],['lata',1.5],['agua',1.5],['antibio',0.6]]},
-  escombros:{nome:'Escombros', n:[0,2], tab:[['tabuas',2.5],['pregos',1],['chapas',1.4],['cano',1.5],['pecabra',0.8],['martelo',1],['band',1],['lata',1],['mun9',0.5],['chave',0.8],['remed',0.4]]},
-  cabana:{nome:'Baú', n:[1,3], tab:[['tabuas',1.2],['pregos',0.8],['besta',0.8],['flechas',1.5],['foice',0.6],['rifle',1],['mun308',2],['machado',1.5],['facao',1.5],['lata',2],['agua',1],['cart',1],['espingarda',0.5]]}
+  escombros:{nome:'Escombros', n:[0,2], tab:[['mun9',1],['cart',0.7],['mun38',0.5],['tabuas',2.5],['pregos',1],['chapas',1.4],['cano',1.5],['pecabra',0.8],['martelo',1],['band',1],['lata',1],['mun9',0.5],['chave',0.8],['remed',0.4]]},
+  cabana:{nome:'Baú', n:[1,3], tab:[['cart',0.8],['mun308',0.8],['flechas',0.6],['tabuas',1.2],['pregos',0.8],['besta',0.8],['flechas',1.5],['foice',0.6],['rifle',1],['mun308',2],['machado',1.5],['facao',1.5],['lata',2],['agua',1],['cart',1],['espingarda',0.5]]}
 };
 function genLoot(t){
   const c = CT[t], n = RI(c.n[0], c.n[1]), out = [], tot = c.tab.reduce((s, e) => s + e[1], 0);
@@ -447,6 +448,9 @@ function makeDetailTex(){
     return [52 + n * 38 + dry * 26 - m * 8, 70 + n * 46 - dry * 6 + m * 10, 30 + n * 20 - m * 6]; }, (g, S) => { for (let i = 0; i < 9000; i++){ const x = Math.random() * S, y = Math.random() * S, l = R(3, 9), a = R(-0.5, 0.5) - Math.PI / 2; g.strokeStyle = pick(['rgba(110,140,60,.55)', 'rgba(60,85,35,.6)', 'rgba(140,150,80,.45)', 'rgba(40,60,28,.55)']); g.lineWidth = R(0.6, 1.4); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l * 0.3, y + Math.sin(a) * l); g.stroke(); } });
   D.forest = procTex(512, (u, v) => { const n = tfbm(u, v, 6, 91, 5), m = tnoise(u, v, 4, 97); return [48 + n * 36 + m * 18, 50 + n * 30, 28 + n * 16]; }, (g, S) => { for (let i = 0; i < 5000; i++){ const x = Math.random() * S, y = Math.random() * S; g.fillStyle = pick(['rgba(110,70,30,.6)', 'rgba(140,100,40,.5)', 'rgba(60,80,30,.55)', 'rgba(80,50,25,.6)', 'rgba(160,120,60,.4)']); g.beginPath(); g.ellipse(x, y, R(1.5, 4), R(0.8, 2), R(0, 3), 0, 7); g.fill(); } for (let i = 0; i < 300; i++){ g.strokeStyle = 'rgba(70,50,30,.6)'; g.lineWidth = R(0.8, 2); const x = Math.random() * S, y = Math.random() * S, a = R(0, 6.28), l = R(6, 20); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); } });
   D.dirt = procTex(256, (u, v) => { const n = tfbm(u, v, 8, 101, 5), r = tnoise(u, v, 128, 103); return [100 + n * 50 + (r > 0.85 ? 25 : 0), 78 + n * 38 + (r > 0.85 ? 18 : 0), 50 + n * 26]; }, (g, S) => { g.strokeStyle = 'rgba(60,40,25,.35)'; g.lineWidth = 3; for (const y of [S * 0.3, S * 0.7]){ g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= S; x += 16) g.lineTo(x, y + R(-2, 2)); g.stroke(); } });
+  // madeira dos móveis: tábuas com veio e nós; metal: escovado, riscos e ferrugem
+  D.wood = procTex(256, (u, v) => { const n = tfbm(u, v, 4, 131, 4), ring = Math.sin((u * 22 + n * 6 + tnoise(u, v, 8, 137) * 2.5) * Math.PI) * 0.5 + 0.5, pl = Math.floor(u * 4) % 2 ? 7 : -3, seam = (u * 4) % 1 < 0.025 ? -60 : 0, knot = tnoise(u, v, 6, 139) > 0.86 ? -26 : 0, c = 116 + ring * 28 + (n - 0.5) * 34 + pl + seam + knot; return [c * 1.05, c, c * 0.92]; }, null, true);
+  D.metal = procTex(256, (u, v) => { const n = tfbm(u, v, 8, 151, 3), br = tnoise(u * 0.02 + v * 0.01, v * 0.3 + u * 40, 64, 157), rs = tnoise(u, v, 6, 163), rust = rs > 0.74 ? -(rs - 0.74) * 160 : 0, c = 130 + (n - 0.5) * 20 + (br - 0.5) * 16 + rust; return [c + (rust ? 14 : 0), c, c - (rust ? 10 : 0)]; }, g => cracks(g, 256, 9, 'rgba(30,30,30,.22)', 0.6), true);
   return D;
 }
 let DTX = null;
@@ -455,13 +459,18 @@ function detailMat(o){
   const m = new THREE.MeshLambertMaterial(Object.assign({vertexColors:true}, o.base || {}));
   if (!DTX || CFG.quality === 'baixa') return m;
   m.onBeforeCompile = sh => {
-    sh.uniforms.tTop = {value:o.top}; sh.uniforms.tSide = {value:o.side || o.top}; sh.uniforms.dS = {value:new THREE.Vector2(o.sTop || 0.2, o.sSide || 0.3)}; sh.uniforms.dK = {value:o.k === undefined ? 1 : o.k};
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tTop; uniform sampler2D tSide; uniform vec2 dS; uniform float dK; varying vec3 vWP; varying vec3 vWN;')
+    sh.uniforms.tTop = {value:o.top}; sh.uniforms.tWood = {value:DTX.wood}; sh.uniforms.tMet = {value:DTX.metal}; sh.uniforms.tSide = {value:o.side || o.top}; sh.uniforms.dS = {value:new THREE.Vector2(o.sTop || 0.2, o.sSide || 0.3)}; sh.uniforms.dK = {value:o.k === undefined ? 1 : o.k};
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN; attribute float aSk; varying float vSk;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal); vSk = aSk;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tTop; uniform sampler2D tSide; uniform sampler2D tWood; uniform sampler2D tMet; uniform vec2 dS; uniform float dK; varying vec3 vWP; varying vec3 vWN; varying float vSk;')
       .replace('#include <color_fragment>', `#include <color_fragment>
       { vec3 n = abs(normalize(vWN)); vec3 dt = texture2D(tTop, vWP.xz * dS.x).rgb; vec3 dx = texture2D(tSide, vec2(vWP.z, vWP.y) * dS.y).rgb, dz = texture2D(tSide, vec2(vWP.x, vWP.y) * dS.y).rgb;
         vec3 d = mix(mix(dz, dx, smoothstep(0.3, 0.7, n.x)), dt, smoothstep(0.55, 0.85, n.y));
+        // móveis: veio da madeira ou metal escovado com ferrugem
+        if (vSk > 0.1){ vec3 wt = texture2D(tWood, vWP.xz * 0.8).rgb, wx = texture2D(tWood, vec2(vWP.z, vWP.y) * 0.8).rgb, wz = texture2D(tWood, vec2(vWP.x, vWP.y) * 0.8).rgb;
+          vec3 mt = texture2D(tMet, vWP.xz * 0.7).rgb, mx = texture2D(tMet, vec2(vWP.z, vWP.y) * 0.7).rgb, mz = texture2D(tMet, vec2(vWP.x, vWP.y) * 0.7).rgb;
+          vec3 dw = mix(mix(wz, wx, smoothstep(0.3, 0.7, n.x)), wt, smoothstep(0.55, 0.85, n.y)), dm = mix(mix(mz, mx, smoothstep(0.3, 0.7, n.x)), mt, smoothstep(0.55, 0.85, n.y));
+          d = vSk < 0.35 ? dw : vSk < 0.6 ? mix(vec3(0.5), dm, 0.35) : dm; }
         // telhado inclinado: fileiras de telha
         float sl = smoothstep(0.25, 0.4, n.y) * (1.0 - smoothstep(0.86, 0.95, n.y)) * dK;
         if (sl > 0.0){ float row = fract(vWP.y * 4.2), col = fract((n.x > n.z ? vWP.z : vWP.x) * 3.3 + floor(vWP.y * 4.2) * 0.5);
@@ -495,13 +504,14 @@ function grow(a, add){
   if (a.n + add <= a.cap) return;
   let cap = a.cap || 2048; while (cap < a.n + add) cap *= 2;
   for (const k of ['pos', 'nor', 'col']){ const na = new Float32Array(cap * 3); if (a[k]) na.set(a[k].subarray(0, a.n * 3)); a[k] = na; }
+  { const ns = new Uint8Array(cap); if (a.sk) ns.set(a.sk.subarray(0, a.n)); a.sk = ns; }
   a.cap = cap;
 }
 function pushGeo(arr, base, x, y, z, sx, sy, sz, color, ry, rx, jit){
   _E.set(rx || 0, ry || 0, 0, 'YXZ'); _Q.setFromEuler(_E); _P.set(x, y, z); _S.set(sx, sy, sz); _M.compose(_P, _Q, _S); _N.getNormalMatrix(_M);
   _C.setHex(color); const f = 1 + (jit === undefined ? (Math.random() - 0.5) * 0.12 : jit), cr = _C.r * f, cg = _C.g * f, cb = _C.b * f;
   const p = base.attributes.position.array, n = base.attributes.normal.array, nv = p.length / 3;
-  grow(arr, nv); let o = arr.n * 3;
+  grow(arr, nv); let o = arr.n * 3; if (SURFK) arr.sk.fill(SURFK, arr.n, arr.n + nv);
   const P3 = arr.pos, N3 = arr.nor, C3 = arr.col;
   for (let i = 0; i < p.length; i += 3, o += 3){
     _v.set(p[i], p[i + 1], p[i + 2]).applyMatrix4(_M); P3[o] = _v.x; P3[o + 1] = _v.y; P3[o + 2] = _v.z;
@@ -510,7 +520,7 @@ function pushGeo(arr, base, x, y, z, sx, sy, sz, color, ry, rx, jit){
   }
   arr.n += nv;
 }
-let BUILD = null, DEFER = false;
+let BUILD = null, DEFER = false, SURFK = 0;   // SURFK: superfície do móvel (60 madeira, 120 esmalte, 180 metal)
 function chunkOf(x, z){
   if (BUILD) return BUILD.geo;
   const i = Math.floor(x / CH), j = Math.floor(z / CH), k = i + ',' + j;
@@ -524,12 +534,13 @@ function toGeometry(a){
   for (let i = 0; i < m; i++){ nb[i] = Math.round(a.nor[i] * 127); cb[i] = Math.min(255, Math.round(a.col[i] * 255)); }
   g.setAttribute('normal', new THREE.BufferAttribute(nb, 3, true));
   g.setAttribute('color', new THREE.BufferAttribute(cb, 3, true));
+  if (a.sk) g.setAttribute('aSk', new THREE.BufferAttribute(a.sk.slice(0, a.n), 1, true));
   g.computeBoundingSphere(); return g;
 }
 function mergedGeo(list){ const a = {n:0, cap:0}; for (const p of list) pushGeo(a, ...p); return toGeometry(a); }
 function finalizeStatic(){
   const mat = detailMat({top:DTX && DTX.grit, side:DTX && DTX.wall, sTop:0.22, sSide:0.32, k:1, key:'st'});
-  for (const c of chunks.values()){ if (!c.n) continue; c.mesh = new THREE.Mesh(toGeometry(c), mat); scene.add(c.mesh); c.pos = c.nor = c.col = null; }
+  for (const c of chunks.values()){ if (!c.n) continue; c.mesh = new THREE.Mesh(toGeometry(c), mat); scene.add(c.mesh); c.pos = c.nor = c.col = c.sk = null; }
 }
 
 // ================= TERRENO =================
@@ -703,7 +714,8 @@ function addBox(x, y, z, sx, sy, sz, color, collide, isWall, noClimb){
 }
 const zr = (a, b) => a < b ? [a, b] : [b, a];
 function boxZ(x1, x2, y1, y2, za, zb, color, coll, wall){ const [z1, z2] = zr(za, zb); return addBox((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2, x2 - x1, y2 - y1, z2 - z1, color, coll, wall); }
-function contBox(x1, x2, y1, y2, za, zb, color, tipo, y0){ boxZ(x1, x2, y1, y2, za, zb, color, true); addContainer((x1 + x2) / 2, (za + zb) / 2, tipo, 1.9, y0); }
+const SURF_T = {geladeira:120, banheiro:120, garagem:180, delegacia:180, lixeira:180};
+function contBox(x1, x2, y1, y2, za, zb, color, tipo, y0){ SURFK = SURF_T[tipo] || 60; boxZ(x1, x2, y1, y2, za, zb, color, true); SURFK = 0; addContainer((x1 + x2) / 2, (za + zb) / 2, tipo, 1.9, y0); }
 const DOORC = [0x6a4a2e, 0x5a3a22, 0x7a2a22, 0x2a3a5a, 0xd8d4c4, 0x3a4a3a, 0x8a6a3a];
 function addDoor(c, w0, gw, o, axis, y0){
   y0 = y0 || 0;
@@ -719,7 +731,7 @@ function addWindow(c, w0, gw, sill, axis, y0){
   pane.b = y0 > 0.5 ? y0 + 0.85 : 0; pane.h = y0 + 1.95; pane.glass = true; addCol(pane, false);
   ents.push({type:'win', axis:zx ? 'z' : 'x', x:zx ? w0 : c, z:zx ? c : w0, y:y0, gw, broken:false, hp:30, pane, sill, i:winN++});
 }
-function addContainer(x, z, tipo, range, y){ containers.push({x, z, y:y || 0, tipo, nome:CT[tipo].nome, loot:genLoot(tipo), aberto:false, range:range || 1.9}); }
+function addContainer(x, z, tipo, range, y){ containers.push({x, z, y:y || 0, tipo, box:i3BoxFor(x, z, tipo, y), nome:CT[tipo].nome, loot:genLoot(tipo), aberto:false, range:range || 1.9}); }
 // verga (parede acima da porta/janela): não atrapalha andar nem escalar, mas bloqueia a visão e o tiro
 // o corpo deitado (≈1,8 m) cabe nessa direção sem entrar em parede?
 function lieFree(x, z, y, fx, fz){ for (const d of [0.55, 0.95]) for (const sg of [-1, 1]) if (hitAny(x + fx * d * sg, z + fz * d * sg, 0.18, y + 0.08)) return false; return true; }
@@ -1481,7 +1493,7 @@ function planCity(){
 // placeBuild gira em quartos de volta, leva até (ox, oz) e ergue até a altura by.
 function appendGeo(dst, src){
   if (!src.n) return; grow(dst, src.n); const o = dst.n * 3, m = src.n * 3;
-  dst.pos.set(src.pos.subarray(0, m), o); dst.nor.set(src.nor.subarray(0, m), o); dst.col.set(src.col.subarray(0, m), o); dst.n += src.n;
+  dst.pos.set(src.pos.subarray(0, m), o); dst.nor.set(src.nor.subarray(0, m), o); dst.col.set(src.col.subarray(0, m), o); dst.sk.set(src.sk.subarray(0, src.n), dst.n); dst.n += src.n;
 }
 function rotP(q, x, z){ for (let i = 0; i < q; i++){ const t = x; x = z; z = -t; } return [x, z]; }
 function doorInfo(h){
@@ -1991,6 +2003,7 @@ function buildWorld(){
   buildWild(); buildRuins(); namePlaces();
   for (const h of houses) if (h.dpx === undefined) doorInfo(h);
   buildBGrid();
+  genWorldItems();   // itens soltos em mesas, balcões e no chão (sorteio próprio da semente)
   for (const c of colliders) if (!c.off && (c.x2 - c.x1) * (c.z2 - c.z1) < 4 && railDist((c.x1 + c.x2) / 2, (c.z1 + c.z2) / 2) < 2.4 && c.h > 0.3 && c.h < 3) c.off = true;   // sobras pequenas em cima da linha
   spawnVehicles(); spawnPropCars(); buildTrain(); if (CFG.quality !== 'baixa') buildGrass();
   buildMapBG();
@@ -3181,6 +3194,7 @@ function attack(){
 function meleeHit(pd){
   const w = pd.w; emitNoise(P.x, P.z, 4);
   if (pd.it !== P.equip) return;
+  ffMelee(w);
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), list = [];
   for (const z of zombies){
     const dx = z.x - P.x, dz = z.z - P.z, d = Math.hypot(dx, dz);
@@ -3324,6 +3338,7 @@ function shoot(w){
       hx = ddx / L; hz = ddz / L; tp = (ay - M.y) / L; O = M;
     }
     const pk = rayPick(O, hx, hz, tp, -0.35, w.alc);
+    { const fh = ffRay(O, hx, hz, tp, pk.z || pk.a ? pk.t : w.alc); if (fh){ ffHit(fh.p, w.dano * R(0.85, 1.15) * (fh.head ? 2.2 : 1) * (w.pell > 1 ? 0.6 : 1), fh.x, fh.y, fh.z); continue; } }
     let best = pk.z, bd = pk.z || pk.a ? pk.t : w.alc, bh = pk.bh, bestA = pk.a, hitPart = pk.part || 'torso';
     // portas e janelas no caminho
     const eh = entRay(O, hx, hz, tp, bd);
@@ -3400,7 +3415,7 @@ function useItem(it){
   else log('Usou: ' + d.nome, '#9fe09a');
   P.inv.splice(P.inv.indexOf(it), 1); renderInv(); hudT = 0;
 }
-function dropItem(it){ if (P.equip === it) equip(null); P.inv.splice(P.inv.indexOf(it), 1); log('Largou: ' + ITEMS[it.id].nome); renderInv(); }
+function dropItem(it){ if (P.equip === it) equip(null); P.inv.splice(P.inv.indexOf(it), 1); witDrop(it); log('Largou no chão: ' + ITEMS[it.id].nome + ' (dá para pegar de novo)'); renderInv(); }
 function weaponsList(){ return P.inv.filter(i => ITEMS[i.id].tipo === 'arma'); }
 function equip(it){ P.equip = it; P.reload = 0; P.reloadIt = null; swingT = 0; setVM(); hudT = 0; }
 function equipSlot(n){ const ws = weaponsList(); const it = ws[n]; if (!it) return; equip(P.equip === it ? null : it); log('Na mão: ' + weapon().nome); }
@@ -3855,10 +3870,11 @@ function interact(){
   if (it.k === 'car'){ enterCar(it.o); return; }
   if (it.k === 'pump'){ const v = it.o; v.fuel = 100; log('Tanque cheio! (gasolina 100%)', '#9fe09a'); sfx('cook', 0.3, undefined, undefined, 0.6) || noiseSnd(0.8, 0.05, 1500, 'bandpass'); emitNoise(P.x, P.z, 4); return; }
   if (it.k === 'fin'){ startFinisher(it.o); return; }
+  if (it.k === 'item'){ i3Pick(it.o); return; }
   if (it.k === 'gate'){ bldGate(it.o, !it.o.o, true); return; }
   if (it.k === 'fix'){ bldFixStart(it.o); return; }
   if (it.k === 'scrap'){ bldScrap(it.o); return; }
-  if (it.k === 'c') openLoot(it.o);
+  if (it.k === 'c'){ if (!it.o.aberto && i3Can(it.o)) i3Open(it.o); else openLoot(it.o); }
   else if (it.k === 'door'){ const e = it.o; if (e.state === 'aberta') closeDoor(e); else if (e.state === 'fechada') openDoor(e); else startPry(e); }
   else { if (it.o.broken) vaultWindow(it.o); else smashWindow(it.o, true); }
 }
@@ -3943,6 +3959,7 @@ function nearestInteract(){
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bd = 1e9;
   if (P.car) return {k:'exit', o:P.car};
   if (!P.fin){ const fz2 = finishTarget(); if (fz2) return {k:'fin', o:fz2}; }
+  { const ia = i3Aimed(); if (ia) return {k:'item', o:ia}; }
   const c = nearestContainer(); if (c){ best = {k:'c', o:c}; bd = Math.hypot(c.x - P.x, c.z - P.z); }
   for (const e of ents){
     const dx = e.x - P.x, dz = e.z - P.z; if (Math.abs(dx) > 2.2 || Math.abs(dz) > 2.2 || Math.abs(P.y - e.y) > 1.3) continue;
@@ -3965,7 +3982,8 @@ function interactLabel(it){
   if (it.k === 'gate') return pre + (it.o.o ? 'Fechar o portão' : 'Abrir o portão') + ' · resistência ' + bldPct(it.o) + '%';
   if (it.k === 'scrap') return pre + 'Arrancar as tábuas da porta quebrada (+2 tábuas)';
   if (it.k === 'fix') return pre + 'Consertar ' + bldName(it.o.k, it.o.ax).toLowerCase() + ' (' + bldPct(it.o) + '%) · ' + (CFG.buildFree ? 'grátis' : '1 tábua + 2 pregos');
-  if (it.k === 'c') return pre + 'Revistar ' + it.o.nome + (it.o.aberto && !it.o.loot.length ? ' (vazio)' : '');
+  if (it.k === 'item'){ const pk = it.o.userData.pick, d = ITEMS[pk.id]; return pre + 'Pegar: ' + d.nome + (descr(pk.id) ? ' · ' + descr(pk.id) : ''); }
+  if (it.k === 'c'){ const c = it.o; if (!c.aberto) return pre + (i3Can(c) ? 'Abrir ' : 'Revistar ') + c.nome.toLowerCase(); return c.loot.length ? pre + 'Lista: ' + c.nome.toLowerCase() + ' (' + c.loot.length + ') · ou mire num item para pegar' : c.nome + ' (vazio)'; }
   if (it.k === 'door'){ const e = it.o; return e.state === 'aberta' ? pre + 'Fechar porta' : e.state === 'fechada' ? pre + 'Abrir porta' : pre + 'Arrombar a fechadura (TRANCADA) · ou derrube: chute (' + (isTouch ? 'EMPURRAR' : 'G') + '), golpes ou tiros'; }
   return it.o.broken ? pre + 'Pular a janela' : pre + 'Quebrar janela (faz barulho)';
 }
@@ -4662,7 +4680,7 @@ function update(dt){
     if (w.fogo){ const tgt = (w.acc || 0.03) * (P.aim ? 1 : 2.8) * (moving ? (sprint ? 3 : 1.7) : 1) * (air ? 2.5 : 1) * (1 + P.panic / 70) * (P.exausto ? 1.5 : 1) * (P.agach && P.aim ? 0.8 : 1);
       P.spread += (tgt - P.spread) * Math.min(1, dt * (P.spread > tgt ? (P.aim ? 7 : 2.2) : 8)); } else P.spread = 0.03; }
   if ((mouseDown || touch.atk) && P.cd <= 0 && !panel && !P.car && !BLD.on) attack();
-  updateAction(dt); updateBuild(dt); updateWob(dt); updateFinisher(dt); updateKick(dt);
+  updateAction(dt); updateBuild(dt); updateI3(dt); updateSave(dt); updateWob(dt); updateFinisher(dt); updateKick(dt);
   updateVehicles(dt);
   updateZombies(dt);
   updateAnimals(dt);
@@ -4728,11 +4746,12 @@ function stepSurf(){
 }
 function die(){
   if (BLD.on) bldToggle(false);
+  P.dx = P.x; P.dz = P.z; setTimeout(() => { if (P) P.killer = null; }, 50);
   if (P.car){ stopEngine(P.car); P.car.occ = false; }
   P.dead = true; P.vida = 0; running = false; unlock(); panel = null; hidePanels(); $('#prompt').style.display = 'none';
   const tot = gameMin - 480, d = Math.floor(tot / 1440), h = Math.floor((tot % 1440) / 60);
-  $('#deadTxt').innerHTML = (P.dragged ? 'Você foi <b>cercado e derrubado</b> pela horda.<br>' : '') + `Você sobreviveu <b>${d} dia(s) e ${h} hora(s)</b>.<br>Zumbis abatidos: <b>${P.kills}</b>` + (P.infect ? '<br>A infecção foi fatal.' : '');
-  $('#dead').style.display = 'flex'; $('#fear').style.opacity = 0; sfx('hurt', 0.8, undefined, undefined, 0.7) || toneSnd(160, 50, 1.6, 0.15);
+  $('#deadTxt').innerHTML = (P.killer && P.vida <= 0 && NET.on ? 'Você foi abatido por <b>' + P.killer + '</b>.<br>' : '') + (P.dragged ? 'Você foi <b>cercado e derrubado</b> pela horda.<br>' : '') + `Você sobreviveu <b>${d} dia(s) e ${h} hora(s)</b>.<br>Zumbis abatidos: <b>${P.kills}</b>` + (P.infect ? '<br>A infecção foi fatal.' : '');
+  $('#dead').style.display = 'flex'; $('#fear').style.opacity = 0; saveNow(); sfx('hurt', 0.8, undefined, undefined, 0.7) || toneSnd(160, 50, 1.6, 0.15);
 }
 let slowT = 0;
 function loop(){
@@ -4768,7 +4787,7 @@ function resetHordes(){
   }, 500);
 }
 function newGame(seed){
-  PILES = [];
+  PILES = []; i3Reset();
   const RND0 = Math.random; if (seed !== undefined) Math.random = mulberry(seed);
   if (scene){ for (const c of chunks.values()) if (c.mesh) c.mesh.geometry.dispose(); }
   scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x98a9b3, 10, 80);
@@ -4811,7 +4830,7 @@ function newGame(seed){
   beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 70, 10, 1, true), new THREE.MeshBasicMaterial({color:0x40c0ff, transparent:true, opacity:0.35, depthWrite:false, fog:false, side:THREE.DoubleSide}));
   beacon.visible = false; scene.add(beacon);
   gameMin = (CFG.startH === undefined ? 8 : CFG.startH) * 60; swingT = 0; spawnT = 3; cullT = 0;
-  updateEnv(); cullChunks(); updateHUD(); setVM();
+  updateEnv(); cullChunks(); updateHUD(); setVM(); svBase();
   $('#log').innerHTML = '';
 }
 function start(){
@@ -4847,7 +4866,8 @@ function init(){
     ? '<b>Analógico (esquerda)</b> andar · <b>Arrastar (direita)</b> olhar<br><b>ATACAR</b> · <b>USAR</b> revistar / arrombar / finalizar zumbi caído · <b>EMPURRAR</b> (em porta = chute) · <b>MIRAR</b> · <b>CÂMERA</b> · <b>MAPA</b> · <b>PULAR</b> (segure para pular mais alto; escala carros e casas) · <b>CORRER</b> · <b>AGACHAR</b> · <b>MOCHILA</b> · <b>RECAR.</b> recarregar · <b>LUZ</b> · <b>ARMA</b> trocar · <b>CONSTRUIR</b> o forte · toque nos quadros de arma no topo para equipar'
     : '<b>WASD</b> andar · <b>Mouse</b> olhar · <b>Clique</b> atacar/atirar<br><b>Botão direito</b> mirar · <b>V</b> 1ª/3ª pessoa · <b>M</b> mapa e rota<br><b>O</b> ou ⚙ configurações · <b>G</b> empurrar (derruba zumbis; ataque no chão = pisão; em porta ou janela = chute) · <b>Espaço</b> pular (segure para pular mais alto e longe) / escalar (de frente para carro, muro ou casa) · <b>Shift</b> correr · <b>C</b> agachar · <b>E</b> revistar / arrombar fechadura / finalizar zumbi caído · <b>I</b> ou <b>Tab</b> mochila · <b>B</b> construir o forte<br><b>1–5</b> ou <b>rodinha</b> trocar arma · <b>R</b> recarregar · <b>F</b> lanterna · <b>Esc</b> pausar')
     + '<br><br>A cidade tem <b>morros</b>, ruas com <b>curvas, subidas e descidas</b>, casas com muro e garagem, <b>sobrados</b>, <b>mansões</b> com piscina no morro, <b>condomínios fechados</b>, <b>sítios</b> na periferia, <b>edifícios com escada</b> até o terraço, <b>shopping</b>, um <b>parque</b> no centro, praças, postos, igrejas, <b>mercado</b>, <b>farmácia</b>, <b>delegacia</b>, <b>loja de armas</b> e <b>ferragens</b>. Ao sul fica a <b>zona rural</b>, com fazendas espalhadas e <b>lavouras</b> de milho, cana, soja, trigo e café. Os zumbis enxergam pouco: só te notam <b>de frente e de perto</b>, demoram um instante para perceber e quase não te veem <b>agachado</b>. Os <b>corredores</b> dão um arranque e cansam: correndo, você escapa. Se você se esconder, os zumbis vão te esquecendo. Dos dois lados da cidade (leste e oeste) há <b>florestas</b> com cabanas de caça. Dá pra <b>escalar carros, muros e telhados</b> — os zumbis não sobem. <b>Portas</b> podem estar <b>trancadas</b> (arrombe com <b>E</b>; pé de cabra é o melhor) e <b>janelas</b> podem ser quebradas e puladas. Feche as portas atrás de você — os zumbis batem até arrombar. Você começa com uma <b>espingarda</b> na mão, uma <b>pistola</b> e um <b>taco</b>. Os zumbis te perseguem por muito tempo, alguns <b>correm</b>, e <b>hordas</b> vagam pela cidade — toda noite, às 21h, uma horda vem atrás de você. Mordidas e arranhões podem <b>infeccionar</b>: <b>antibiótico</b> (farmácia) cura e <b>antitérmico</b> segura a febre. Bem alimentado e sem sangrar, a vida volta aos poucos. Dá pra <b>dirigir carros</b> (E perto do carro) — de olho na <b>gasolina</b> e na <b>lataria</b>. Na zona rural há <b>fazendas</b> com celeiro, e dá pra <b>caçar</b> veados, javalis e coelhos (cozinhe a carne no fogão).';
-  $('#bStart').onclick = () => { if (NEWGAME){ NEWGAME = false; newGame(); } start(); };
+  // mundo novo sempre gerado de novo (a primeira cidade da página sai com os carros diferentes da mesma semente)
+  $('#bStart').onclick = () => { NEWGAME = false; mpMsg('Gerando a cidade...'); setTimeout(() => { const seed = newSeed(); newGame(seed); worldNew(seed, ''); mpMsg(''); start(); }, 30); };
   $('#bGuide').onclick = () => openGuide('start');
   $('#bGuide2').onclick = () => openGuide('pause');
   $('#bCfg').onclick = () => openCfg('start'); $('#bCfg2').onclick = () => openCfg('pause');
@@ -4858,7 +4878,7 @@ function init(){
   $('#gear').onclick = e => { e.stopPropagation(); openCfg(paused ? 'pause' : 'game'); }; $('#cfgX').onclick = closePanel;
   $('#cfgReset').onclick = () => { CFG = Object.assign({}, CFG_DEF); applyCfg(); renderCfg(); };
   $('#bResume').onclick = () => { lock(); if (isTouch){ paused = false; $('#pause').style.display = 'none'; } };
-  $('#bRetry').onclick = () => { newGame(); start(); };
+  $('#bRetry').onclick = respawnHere;
   $('#lootX').onclick = closePanel; $('#invX').onclick = closePanel; $('#guideX').onclick = closePanel;
   $('#lootAll').onclick = () => { const c = lootC; if (!c || !c.aberto) return; while (c.loot.length && addItem(c.loot[0])) c.loot.shift(); renderLoot(); };
   $('#mini').addEventListener('pointerdown', e => { if (running){ e.stopPropagation(); openMap(); } });
@@ -4881,7 +4901,7 @@ function init(){
   $('#hot').addEventListener('pointerdown', e => { const s = e.target.closest('.sl'); if (s && running){ e.stopPropagation(); equipSlot(+s.dataset.i); } });
   if (isTouch) setupTouch();
   applyCfg();
-  newGame();
+  BOOTSEED = newSeed(); newGame(BOOTSEED);
   loop();
   mpSetup();
 }
@@ -5381,6 +5401,431 @@ function bldBarInput(e){
   else { const a = t.dataset.a; if (a === 'rot') bldRotate(); else if (a === 'put') bldStart(); else if (a === 'del') bldDismantle(); else bldToggle(false); }
 }
 
+// ================= ITENS EM 3D: DENTRO DOS MÓVEIS ABERTOS E SOLTOS PELO MUNDO =================
+// Ao abrir um móvel, a porta (ou a tampa) abre de verdade e os itens aparecem lá dentro, em 3D; mirando e apertando E você pega.
+// Também há itens soltos em mesas, balcões e no chão (sorteados pela semente do mundo, iguais para todos da sala), e o que você larga fica no chão.
+const I3 = {tpl:{}, tex:{}, mat:{}, vis:new Map(), wvis:new Map(), pick:[], aim:null, t:0, act:null};
+let WIT = [], WITK = new Map();
+const I3_NOVIS = {portamalas:1, carcaca:1};
+const I3_BOXT = {geladeira:1, cozinha:1, guardaroupa:1, banheiro:1, caixa:1, garagem:1, cabana:1, armario:1, igreja:1, caverna:1, celeiro:1, despensa:1, lanchonete:1, mercado:1, farmacia:1, delegacia:1, armas:1, ferragem:1, esportes:1, roupas:1, balcao:1, lixeira:1, mirante:1};
+// o móvel do contêiner é o último colisor criado, se ele cobre o ponto do contêiner
+function i3BoxFor(x, z, tipo, y){
+  if (!I3_BOXT[tipo]) return null; const c = colliders[colliders.length - 1];
+  if (!c || x < c.x1 - 0.05 || x > c.x2 + 0.05 || z < c.z1 - 0.05 || z > c.z2 + 0.05 || c.x2 - c.x1 > 4.6 || c.z2 - c.z1 > 4.6 || c.h > (y || 0) + 2.5 || c.h < (y || 0) + 0.3) return null;
+  return c;
+}
+// ---------- texturas e modelos ----------
+function i3Tex(key, w, h, draw){
+  if (I3.tex[key]) return I3.tex[key];
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); draw(g, w, h);
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return (I3.tex[key] = t);
+}
+const i3Label = (bg, fg, txt, sub, band) => (g, w, h) => {
+  g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  if (band){ g.fillStyle = band; g.fillRect(0, h * 0.62, w, h * 0.16); }
+  g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(0, h * 0.1, w, h * 0.06);
+  g.fillStyle = 'rgba(0,0,0,.18)'; for (let i = 0; i < 40; i++) g.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = 'bold ' + Math.round(h * 0.3) + 'px sans-serif'; g.fillText(txt, w / 2, h * (sub ? 0.4 : 0.5));
+  if (sub){ g.font = 'bold ' + Math.round(h * 0.15) + 'px sans-serif'; g.fillText(sub, w / 2, h * 0.7); }
+};
+function i3M(key, o){ return I3.mat[key] || (I3.mat[key] = new THREE.MeshLambertMaterial(o)); }
+const I3METAL = () => i3M('metal', {color:0xb8bcc0});
+// caixa e cilindro com a base em y = 0
+function i3Box(g, w, h, d, mat, x, y, z, ry){ const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x || 0, (y || 0) + h / 2, z || 0); if (ry) m.rotation.y = ry; g.add(m); return m; }
+function i3Cyl(g, r, h, mat, x, y, z, seg){ const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg || 14), mat); m.position.set(x || 0, (y || 0) + h / 2, z || 0); g.add(m); return m; }
+const WLEN = {faca:0.3, chave:0.3, martelo:0.33, pecabra:0.6, cano:0.7, taco:0.85, pa:1.0, foice:0.6, facao:0.55, machado:0.75, katana:1.0, marreta:0.85, pistola:0.2, revolver:0.25, smg:0.5, espingarda:1.0, rifle:1.1, fuzil:0.95, besta:0.8};
+function i3Weapon(id){
+  const src = vmParts[id], g = new THREE.Group(); if (!src) return null;
+  const geo = (src.userData.wgeo || src.geometry).clone(); geo.deleteAttribute('normal'); geo.computeBoundingBox();
+  const b = geo.boundingBox, sx = b.max.x - b.min.x, sy = b.max.y - b.min.y, sz = b.max.z - b.min.z;
+  geo.translate(-(b.min.x + b.max.x) / 2, -(b.min.y + b.max.y) / 2, -(b.min.z + b.max.z) / 2);
+  // o lado mais comprido vira x (deitada); o mais fino fica em pé (de lado no chão)
+  if (sz >= sx && sz >= sy) geo.rotateY(Math.PI / 2); else if (sy >= sx && sy >= sz) geo.rotateZ(Math.PI / 2);
+  geo.computeBoundingBox(); let c = geo.boundingBox;
+  if (c.max.y - c.min.y > c.max.z - c.min.z) geo.rotateX(Math.PI / 2);
+  geo.computeBoundingBox(); c = geo.boundingBox;
+  const s = (WLEN[id] || 0.5) / Math.max(0.01, c.max.x - c.min.x); geo.scale(s, s, s); geo.computeBoundingBox(); c = geo.boundingBox; geo.translate(0, -c.min.y, 0); geo.computeVertexNormals();
+  g.add(new THREE.Mesh(geo, src.material)); return g;
+}
+function i3Build(id){
+  const g = new THREE.Group(), d = ITEMS[id];
+  const L = (k, bg, fg, t, sub, band, w, h) => i3M('l_' + k, {map:i3Tex(k, w || 128, h || 64, i3Label(bg, fg, t, sub, band))});
+  if (d.tipo === 'arma'){ const w = i3Weapon(id); if (w) return w; }
+  switch (id){
+    case 'lata': { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.115, 16), [L('lata', '#8a3a1a', '#ffe08a', 'FEIJÃO', 'tipo carioca', '#d8a830'), I3METAL(), I3METAL()]); m.position.y = 0.0575; g.add(m); break; }
+    case 'salg': i3Box(g, 0.17, 0.24, 0.06, L('salg', '#e8a020', '#8a1a10', 'CHIPS', 'sabor queijo', '#c03020')); break;
+    case 'carne': case 'carneA': { const raw = id === 'carne'; i3Box(g, 0.2, 0.045, 0.13, i3M(id, {map:i3Tex(id, 64, 64, (q, w, h) => { q.fillStyle = raw ? '#a8302a' : '#6a3a1a'; q.fillRect(0, 0, w, h); q.strokeStyle = raw ? 'rgba(255,230,220,.7)' : 'rgba(40,20,8,.6)'; q.lineWidth = 3; for (let i = 0; i < 5; i++){ q.beginPath(); q.moveTo(0, Math.random() * h); q.bezierCurveTo(w * .3, Math.random() * h, w * .7, Math.random() * h, w, Math.random() * h); q.stroke(); } })})); break; }
+    case 'agua': { const b = i3Cyl(g, 0.036, 0.2, i3M('pet', {color:0xb8dcef, transparent:true, opacity:0.55})); i3Cyl(g, 0.037, 0.06, L('agua', '#2a7ac0', '#ffffff', 'ÁGUA', 'mineral'), 0, 0.07); i3Cyl(g, 0.015, 0.025, i3M('tampa', {color:0x1a5ab0}), 0, 0.2); break; }
+    case 'refri': { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.122, 16), [L('refri', '#c01818', '#ffffff', 'COLA'), I3METAL(), I3METAL()]); m.position.y = 0.061; g.add(m); break; }
+    case 'band': { const m = i3Cyl(g, 0.045, 0.055, i3M('band', {color:0xeee2cc})); m.rotation.x = Math.PI / 2; m.position.y = 0.045; break; }
+    case 'remed': i3Box(g, 0.09, 0.035, 0.05, L('remed', '#ffffff', '#c02020', 'ANALGÉSICO', '500 mg', '#e04040')); break;
+    case 'antit': i3Box(g, 0.09, 0.035, 0.05, L('antit', '#ffffff', '#1a5ab0', 'ANTITÉRMICO', 'gotas', '#3a7ad0')); break;
+    case 'antibio': { i3Box(g, 0.075, 0.03, 0.045, L('antibio', '#f4f4ee', '#1a8040', 'ANTIBIÓTICO', 'amoxicilina', '#30a060')); i3Cyl(g, 0.016, 0.06, i3M('vidro', {color:0xb06a20, transparent:true, opacity:0.75}), 0.06, 0); i3Cyl(g, 0.017, 0.015, i3M('tampaL', {color:0xe07010}), 0.06, 0.06); break; }
+    case 'kit': { i3Box(g, 0.3, 0.11, 0.2, i3M('kit', {map:i3Tex('kit', 128, 64, (q, w, h) => { q.fillStyle = '#f2f2ee'; q.fillRect(0, 0, w, h); q.fillStyle = '#d02020'; q.fillRect(w / 2 - 8, h / 2 - 24, 16, 48); q.fillRect(w / 2 - 24, h / 2 - 8, 48, 16); })})); i3Box(g, 0.1, 0.03, 0.03, i3M('alca', {color:0x333333}), 0, 0.11); break; }
+    case 'galao': { i3Box(g, 0.24, 0.32, 0.13, i3M('galao', {color:0xc02a1a})); i3Box(g, 0.12, 0.04, 0.03, i3M('galaoA', {color:0x8a1a10}), -0.03, 0.32); i3Cyl(g, 0.02, 0.06, i3M('bico', {color:0xe0c020}), 0.09, 0.31); break; }
+    case 'ferram': { i3Box(g, 0.42, 0.17, 0.19, i3M('ferram', {color:0xb82018})); i3Box(g, 0.43, 0.02, 0.2, i3M('ferramL', {color:0x6a1010}), 0, 0.12); i3Box(g, 0.2, 0.04, 0.03, i3M('alca', {color:0x333333}), 0, 0.17); break; }
+    case 'mun9': i3Box(g, 0.12, 0.065, 0.08, L('mun9', '#6a6a30', '#ffe060', '9mm', '50 cartuchos')); break;
+    case 'mun38': i3Box(g, 0.12, 0.065, 0.08, L('mun38', '#2a3a6a', '#ffffff', '.38', 'especial')); break;
+    case 'mun556': i3Box(g, 0.14, 0.07, 0.09, L('mun556', '#3a4a2a', '#e8e0a0', '5.56', 'militar')); break;
+    case 'mun308': i3Box(g, 0.14, 0.07, 0.09, L('mun308', '#5a3a1a', '#ffe0a0', '.308', 'caça')); break;
+    case 'cart': i3Box(g, 0.13, 0.07, 0.09, L('cart', '#a01818', '#ffffff', 'CAL.12', 'chumbo')); break;
+    case 'flechas': { const sh = i3M('haste', {color:0x8a6a3a}), pena = i3M('pena', {color:0xd04020}); for (let i = 0; i < 6; i++){ const m = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.66, 5), sh); m.rotation.z = Math.PI / 2; m.position.set(0, 0.008 + (i % 2) * 0.01, -0.03 + i * 0.012); g.add(m); i3Box(g, 0.06, 0.012, 0.004, pena, -0.3, (i % 2) * 0.01, -0.03 + i * 0.012); } break; }
+    case 'tabuas': { const w = bldMats().wood; for (let i = 0; i < 3; i++) i3Box(g, 0.9, 0.03, 0.13, w, 0, i * 0.031, (i - 1) * 0.02, (i - 1) * 0.06); break; }
+    case 'pregos': i3Box(g, 0.1, 0.06, 0.07, L('pregos', '#8a8a86', '#1a1a1a', 'PREGOS', '1 kg')); break;
+    case 'chapas': { const m = bldMats().metal; i3Box(g, 0.6, 0.012, 0.42, m); i3Box(g, 0.58, 0.012, 0.4, m, 0.02, 0.013, 0.01, 0.05); break; }
+    default: i3Box(g, 0.15, 0.1, 0.15, i3M('caixaP', {color:0xa08060}));
+  }
+  return g;
+}
+function i3Model(id){
+  if (!I3.tpl[id]){ const g = i3Build(id); g.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(g); g.userData.h = Math.max(0.03, bb.max.y - bb.min.y); g.userData.w = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z); I3.tpl[id] = g; }
+  const t = I3.tpl[id], m = t.clone(); m.userData.h = t.userData.h; m.userData.w = t.userData.w; return m;
+}
+// ---------- móvel aberto: porta ou tampa, fundo escuro, prateleiras e os itens ----------
+const DOORC2 = {geladeira:0xe8e8e2, guardaroupa:0x5a3a22, armario:0x6a4a2e, cozinha:0x8a6a4a, banheiro:0xe0e0e0, caixa:0x8a7a5a, garagem:0x6a6a6a, despensa:0xc8b890, delegacia:0x5a6070, igreja:0xe8e0c0, celeiro:0x6a4a2e, cabana:0x6a4a2a, mirante:0x5a6a5a, caverna:0x5a4a30, lixeira:0x2f4f3a, balcao:0x6b4a2e, armas:0x9ab0c0};
+const i3Kind = c => { const k = (OPEN_T[c.tipo] || [0, 'madeira'])[1], n = c.nome || ''; if (k === 'bau' || c.tipo === 'lixeira') return 'tampa'; if (k === 'pano' || !c.box) return 'chao'; if (/Prateleira|Balcão|Bancada|Arara|Vitrine|Bilheteria|Carga|Caixa de doações/.test(n) && k !== 'gel') return 'aberto'; return 'porta'; };
+const i3Can = c => !I3_NOVIS[c.tipo];
+// lado do móvel virado para o jogador (é dali que ele abre)
+function i3Face(c, x, z){
+  const b = c.box; if (!b) return {ax:'z', s:1};
+  const cx = (b.x1 + b.x2) / 2, cz = (b.z1 + b.z2) / 2, hw = Math.max(0.1, (b.x2 - b.x1) / 2), hd = Math.max(0.1, (b.z2 - b.z1) / 2);
+  return Math.abs(x - cx) / hw > Math.abs(z - cz) / hd ? {ax:'x', s:Math.sign(x - cx) || 1} : {ax:'z', s:Math.sign(z - cz) || 1};
+}
+function i3VisBuild(c){
+  const g = new THREE.Group(), kind = i3Kind(c), b = c.box, y0 = c.y || 0, v = {g, c, kind, doors:[], items:[], sig:''};
+  if (!c.face){ let px = P.x, pz = P.z, best = Math.hypot(c.x - P.x, c.z - P.z); if (NET.on) for (const p of NET.peers.values()) if (p.rp){ const d = Math.hypot(c.x - p.rp.x, c.z - p.rp.z); if (d < best){ best = d; px = p.rp.x; pz = p.rp.z; } } c.face = i3Face(c, px, pz); }
+  const f = c.face, dark = i3M('fundo', {color:0x17120d}), light = i3M('fundoG', {color:0xdfe8ee, emissive:0x404850}), shelfM = c.tipo === 'geladeira' ? i3M('pratG', {color:0xe8eef0}) : i3M('prat', {color:0x4a3422});
+  v.slots = [];
+  if (kind === 'porta' || kind === 'aberto'){
+    const top = b.h, plane = f.ax === 'z' ? (f.s > 0 ? b.z2 : b.z1) : (f.s > 0 ? b.x2 : b.x1), u1 = f.ax === 'z' ? b.x1 : b.z1, u2 = f.ax === 'z' ? b.x2 : b.z2;
+    // armário de loja com dois contêineres: cada um usa a sua metade
+    let a1 = u1 + 0.04, a2 = u2 - 0.04; const cu = f.ax === 'z' ? c.x : c.z; if (a2 - a1 > 2.2){ a1 = Math.max(a1, cu - 0.95); a2 = Math.min(a2, cu + 0.95); }
+    const W = a2 - a1, H = top - y0 - 0.08, nx = f.ax === 'x' ? f.s : 0, nz = f.ax === 'z' ? f.s : 0, yaw = Math.atan2(nx, nz);
+    const at = (u, out) => f.ax === 'z' ? [u, plane + f.s * out] : [plane + f.s * out, u];
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(W, H), c.tipo === 'geladeira' ? light : dark); const [px, pz] = at((a1 + a2) / 2, 0.005); pl.position.set(px, y0 + 0.04 + H / 2, pz); pl.rotation.y = yaw; g.add(pl);
+    const rows = clamp(Math.floor(H / 0.42), 1, 4), rh = H / rows;
+    for (let r = 0; r < rows; r++){
+      const yy = y0 + 0.04 + r * rh, sh = new THREE.Mesh(new THREE.BoxGeometry(W, 0.025, 0.17), shelfM), [sx, sz] = at((a1 + a2) / 2, 0.085); sh.position.set(sx, yy + 0.012, sz); sh.rotation.y = yaw; g.add(sh);
+      const n = Math.max(1, Math.floor(W / 0.34)); for (let i = 0; i < n; i++) v.slots.push({u:a1 + (i + 0.5) * W / n, y:yy + 0.026, out:0.085, yaw, at, cell:W / n});
+    }
+    if (kind === 'porta'){
+      const tang = f.ax === 'z' ? [1, 0] : [0, 1], dcol = DOORC2[c.tipo] || 0x6a4a2e, dm = i3M('porta' + dcol, {color:dcol}), two = W > 0.95 && c.tipo !== 'geladeira';
+      for (const [hu, sg] of two ? [[a1, 1], [a2, -1]] : [[a1, 1]]){
+        const dw = two ? W / 2 : W, piv = new THREE.Group(), [hx, hz] = at(hu, 0.012); piv.position.set(hx, y0 + 0.04, hz);
+        const tx = tang[0] * sg, tz = tang[1] * sg, phi0 = Math.atan2(-tz, tx), dir = (nx * tz - nz * tx) > 0 ? 1 : -1;
+        const m = new THREE.Mesh(new THREE.BoxGeometry(dw, H, 0.03), dm); m.position.set(dw / 2, H / 2, 0); piv.add(m);
+        const hd = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.14, 0.03), i3M('macaneta', {color:0x9a9a9a})); hd.position.set(dw - 0.07, H * 0.55, dir * 0.03 * 0 + 0.025); piv.add(hd);
+        piv.rotation.y = phi0; g.add(piv); v.doors.push({piv, phi0, dir, max:Math.PI * 0.58});
+      }
+    }
+  } else if (kind === 'tampa'){
+    const top = b.h, ins = 0.05, W = b.x2 - b.x1 - ins * 2, D = b.z2 - b.z1 - ins * 2, cx = (b.x1 + b.x2) / 2, cz = (b.z1 + b.z2) / 2;
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(W, D), dark); pl.rotation.x = -Math.PI / 2; pl.position.set(cx, top + 0.004, cz); g.add(pl);
+    // tampa presa no lado de trás (oposto ao jogador), abre para cima
+    const nx = f.ax === 'x' ? f.s : 0, nz = f.ax === 'z' ? f.s : 0, piv = new THREE.Group(), depth = f.ax === 'z' ? b.z2 - b.z1 : b.x2 - b.x1, wide = f.ax === 'z' ? b.x2 - b.x1 : b.z2 - b.z1;
+    piv.position.set(cx - nx * depth / 2, top, cz - nz * depth / 2); piv.rotation.order = 'YXZ'; piv.rotation.y = Math.atan2(nx, nz);
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(wide + 0.02, 0.04, depth + 0.02), i3M('tampa' + (DOORC2[c.tipo] || 0x6a4a2a), {color:DOORC2[c.tipo] || 0x6a4a2a})); lid.position.set(0, 0.02, depth / 2); piv.add(lid); g.add(piv);
+    v.lid = piv;
+    const n = Math.max(1, Math.min(6, Math.floor(W / 0.3) * Math.max(1, Math.floor(D / 0.3))));
+    const cols = Math.max(1, Math.floor(W / 0.3)); for (let i = 0; i < n; i++){ const ci = i % cols, ri = Math.floor(i / cols), rr = Math.max(1, Math.ceil(n / cols)); v.slots.push({x:b.x1 + ins + (ci + 0.5) * W / cols, z:b.z1 + ins + (ri + 0.5) * D / rr, y:top + 0.006, yaw:Math.atan2(nx, nz), cell:Math.min(W / cols, D / rr)}); }
+  } else {
+    // sem móvel (mochila, escombros): os itens ficam espalhados no chão
+    for (let i = 0; i < 6; i++){ const a = i * 2.1 + (c.x * 7.3 % 1), r = 0.25 + (i % 3) * 0.2, x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r; v.slots.push({x, z, y:groundAt(x, z, 0.1, y0 + 0.6), yaw:a, cell:0.5}); }
+  }
+  c.openK = c.openK || 0; scene.add(g); I3.vis.set(c, v); return v;
+}
+function i3VisItems(v){
+  const c = v.c; for (const m of v.items) v.g.remove(m); v.items = [];
+  c.loot.forEach((id, i) => {
+    const s = v.slots[i % Math.max(1, v.slots.length)]; if (!s || !ITEMS[id]) return;
+    const m = i3Model(id), k = Math.min(1, (s.cell * 0.92) / Math.max(0.05, m.userData.w)); if (k < 1) m.scale.setScalar(k);
+    if (s.at){ const [x, z] = s.at(s.u, s.out); m.position.set(x, s.y + (i >= v.slots.length ? 0.1 : 0), z); m.rotation.y = s.yaw + Math.PI / 2 + Math.sin(i * 7.1) * 0.25; }
+    else { m.position.set(s.x, s.y, s.z); m.rotation.y = s.yaw + Math.sin(i * 5.3) * 0.6; }
+    m.userData.pick = {c, i, id}; v.g.add(m); v.items.push(m);
+  });
+  v.sig = c.loot.join(',');
+}
+function i3VisDrop(c){ const v = I3.vis.get(c); if (!v) return; scene.remove(v.g); I3.vis.delete(c); }
+// ---------- itens soltos no mundo ----------
+function witPickFrom(tipo, rr){ const c = CT[tipo]; if (!c) return null; const tot = c.tab.reduce((s, e) => s + e[1], 0); let r = rr() * tot; for (const e of c.tab){ r -= e[1]; if (r <= 0) return e[0]; } return c.tab[0][0]; }
+function witAdd(o){ if (WITK.has(o.k)) return WITK.get(o.k); WIT.push(o); WITK.set(o.k, o); return o; }
+// sorteia com a semente do mundo (usa um sorteio próprio para não mudar o resto da cidade)
+function genWorldItems(){
+  WIT = []; WITK = new Map();
+  const rr = mulberry(Math.floor((SEEDX + 5000) * 1013) + 77); let n = 0;
+  const put = (id, x, y, z) => { if (!id || !ITEMS[id]) return; witAdd({k:'g' + (n++), id, x:r2(x), y:r2(y), z:r2(z), ry:r2(rr() * 6.28)}); };
+  // em cima de balcões, pias, cômodas e caixas
+  for (const c of containers){ const b = c.box; if (!b) continue; const h = b.h - (c.y || 0); if (h < 0.55 || h > 1.15 || b.x2 - b.x1 < 0.4 || b.z2 - b.z1 < 0.35 || rr() > 0.22) continue;
+    put(witPickFrom(c.tipo === 'cozinha' || c.tipo === 'balcao' || c.tipo === 'lanchonete' ? 'cozinha' : c.tipo, rr), b.x1 + 0.15 + rr() * (b.x2 - b.x1 - 0.3), b.h + 0.002, b.z1 + 0.15 + rr() * (b.z2 - b.z1 - 0.3)); }
+  // no chão das casas e lojas
+  for (const h of houses){ for (const lv of h.levels || [0]){ if (rr() > 0.4) continue; for (let t = 0; t < 8; t++){ const x = h.x1 + 1 + rr() * Math.max(0.1, h.x2 - h.x1 - 2), z = h.z1 + 1 + rr() * Math.max(0.1, h.z2 - h.z1 - 2), g = groundAt(x, z, 0.1, lv + 0.3);
+    if (Math.abs(g - lv) > 0.15 || hitAny(x, z, 0.3, lv + 0.05)) continue; put(witPickFrom(pick2(rr, ['armario', 'cozinha', 'caixa', 'guardaroupa']), rr), x, g + 0.002, z); break; } } }
+  // espalhados nos escombros, na barreira militar e nos vagões
+  for (const c of containers){ if (!/escombros|militar|vagao|caverna/.test(c.tipo)) continue; const m = 1 + Math.floor(rr() * 2); for (let i = 0; i < m; i++){ const a = rr() * 6.28, r = 1.2 + rr() * 2.5, x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r; if (hitAny(x, z, 0.3, (c.y || 0) + 0.05)) continue; put(witPickFrom(c.tipo, rr), x, groundAt(x, z, 0.1, (c.y || 0) + 0.6) + 0.002, z); } }
+}
+const pick2 = (rr, a) => a[Math.floor(rr() * a.length)];
+function witShow(o){
+  if (o.m || o.gone) return; const m = i3Model(o.id); m.position.set(o.x, o.y, o.z); m.rotation.y = o.ry; m.userData.pick = {w:o, id:o.id}; scene.add(m); o.m = m;
+}
+function witHide(o){ if (o.m){ scene.remove(o.m); o.m = null; } }
+function witGone(o, mine){
+  o.gone = true; witHide(o);
+  if (mine) netSend({t:'wi', k:o.k});
+}
+// o que o jogador larga fica no chão (com a durabilidade e o pente que tinha)
+function witDrop(it){
+  const a = P.yaw + R(-0.5, 0.5), x = P.x - Math.sin(a) * 0.7, z = P.z - Math.cos(a) * 0.7, y = groundAt(x, z, 0.1, P.y + 0.4) + 0.002;
+  const o = witAdd({k:'d' + rid(7), id:it.id, x:r2(x), y:r2(y), z:r2(z), ry:r2(R(0, 6.28)), st:{dur:it.dur, mag:it.mag, sil:it.sil}});
+  netSend({t:'wd', o:witSer(o)}); return o;
+}
+const witSer = o => [o.k, o.id, o.x, o.y, o.z, o.ry, o.st || 0];
+const witDe = q => ({k:q[0], id:q[1], x:q[2], y:q[3], z:q[4], ry:q[5], st:q[6] || null});
+// ---------- mirar e pegar ----------
+const _i3d = new THREE.Vector3(), _i3p = new THREE.Vector3();
+function i3Aimed(){
+  if (P.car) return null;
+  camera.getWorldDirection(_i3d); const C = camera.position; let best = null, bt = 1e9;
+  for (const m of I3.pick){
+    const pk = m.userData.pick; if (!pk) continue;
+    m.getWorldPosition(_i3p); const h = (m.userData.h || 0.1) * m.scale.y, cy = _i3p.y + h / 2;
+    if (Math.hypot(_i3p.x - P.x, _i3p.z - P.z) > 2.3 || Math.abs(cy - (P.y + 0.9)) > 1.9) continue;
+    const ox = _i3p.x - C.x, oy = cy - C.y, oz = _i3p.z - C.z, t = ox * _i3d.x + oy * _i3d.y + oz * _i3d.z; if (t < 0.2) continue;
+    const dx = ox - _i3d.x * t, dy = oy - _i3d.y * t, dz = oz - _i3d.z * t, r = Math.max(0.13, Math.min(0.32, ((m.userData.w || 0.2) * m.scale.x) * 0.45)) + t * 0.012;
+    if (dx * dx + dy * dy + dz * dz < r * r && t < bt){ bt = t; best = m; }
+  }
+  return best;
+}
+function i3Pick(m){
+  const pk = m.userData.pick; if (!pk) return;
+  if (pk.c){
+    const c = pk.c; let i = pk.i; if (c.loot[i] !== pk.id) i = c.loot.indexOf(pk.id); if (i < 0) return;
+    if (!addItem(pk.id)) return; c.loot.splice(i, 1); if (lootC === c && panel === 'loot') renderLoot();
+  } else if (pk.w){
+    const o = pk.w; if (o.gone) return;
+    if (o.st && ITEMS[o.id].tipo === 'arma'){ if (P.inv.length >= 16){ log('Mochila cheia!', '#ffb070'); return; } const it = {id:o.id}; if (o.st.dur !== undefined) it.dur = o.st.dur; if (o.st.mag !== undefined) it.mag = o.st.mag; if (o.st.sil) it.sil = true; P.inv.push(it); if (!P.equip){ P.equip = it; setVM(); } log('Pegou: ' + ITEMS[o.id].nome); }
+    else if (!addItem(o.id)) return;
+    witGone(o, true);
+  }
+  sfx('swu', 0.25, undefined, undefined, 1.4) || noiseSnd(0.06, 0.06, 1500); emitNoise(P.x, P.z, 2); P.srch = 0.35; renderInv();
+}
+// ---------- abrir o móvel em 3D ----------
+function i3Open(c){
+  if (I3.act || P.act) return;
+  const [dur, k] = OPEN_T[c.tipo] || [0.75, 'madeira'];
+  c.face = i3Face(c, P.x, P.z);
+  I3.act = {c, t:0, dur, x0:P.x, z0:P.z}; emitNoise(P.x, P.z, 3); openSnd(k); P.srch = dur;
+}
+function i3ActUpdate(dt){
+  const a = I3.act, box = $('#act'); if (!a) return;
+  const lbl = box.firstElementChild;
+  if (Math.hypot(P.x - a.x0, P.z - a.z0) > 0.8 || P.dead || panel){ I3.act = null; box.style.display = 'none'; lbl.textContent = 'Arrombando...'; return; }
+  a.t += dt; box.style.display = 'block'; lbl.textContent = 'Abrindo: ' + a.c.nome.toLowerCase() + '...'; $('#actB').style.width = Math.min(100, a.t / a.dur * 100) + '%';
+  if (a.t >= a.dur){ I3.act = null; box.style.display = 'none'; lbl.textContent = 'Arrombando...'; a.c.aberto = true; if (!a.c.loot.length) log(a.c.nome + ': vazio.', '#9a917c'); }
+}
+// ---------- a cada quadro ----------
+function updateI3(dt){
+  i3ActUpdate(dt);
+  I3.t -= dt;
+  if (I3.t <= 0){
+    I3.t = 0.25;
+    for (const c of containers){
+      if (!c.aberto || !i3Can(c)) continue;
+      const d = Math.hypot(c.x - P.x, c.z - P.z), v = I3.vis.get(c);
+      if (d < 16 && Math.abs((c.y || 0) - P.y) < 7){ if (!v) i3VisBuild(c); }
+      else if (v && d > 20) i3VisDrop(c);
+    }
+    for (const o of WIT){ if (o.gone) continue; const d = Math.abs(o.x - P.x) + Math.abs(o.z - P.z); if (d < 26 && Math.abs(o.y - P.y) < 8) witShow(o); else if (o.m && d > 32) witHide(o); }
+    I3.pick = []; for (const v of I3.vis.values()){ if (v.sig !== v.c.loot.join(',')) i3VisItems(v); for (const m of v.items) I3.pick.push(m); }
+    for (const o of WIT) if (o.m) I3.pick.push(o.m);
+  }
+  // porta e tampa abrindo
+  for (const v of I3.vis.values()){
+    const c = v.c; if (c.openK >= 1) continue; c.openK = Math.min(1, c.openK + dt * 2.4); const k = 1 - (1 - c.openK) ** 3;
+    for (const d of v.doors) d.piv.rotation.y = d.phi0 + d.dir * d.max * k;
+    if (v.lid) v.lid.rotation.x = -k * Math.PI * 0.62;
+  }
+  // item na mira dá uma "pulsada"
+  const am = P.itC && P.itC.k === 'item' ? P.itC.o : null;
+  if (I3.aim && I3.aim !== am){ I3.aim.position.y -= I3.aim.userData.lift || 0; I3.aim.userData.lift = 0; }
+  I3.aim = am;
+  if (am){ const l = 0.02 + Math.sin(performance.now() * 0.008) * 0.012; am.position.y += l - (am.userData.lift || 0); am.userData.lift = l; }
+}
+function i3Reset(){ for (const v of I3.vis.values()) scene && scene.remove(v.g); I3.vis.clear(); I3.pick = []; I3.aim = null; I3.act = null; for (const o of WIT) o.m = null; }
+
+// ================= MUNDOS SALVOS =================
+// Cada mundo (sozinho ou sala que você criou) fica salvo neste aparelho: forte, móveis revistados, portas, itens no chão, carros, hora e opções.
+// O seu personagem (mochila, vida, onde estava) fica salvo por mundo; o amigo salva o dele no aparelho dele.
+// Morreu? Renasce a até 50 m de onde caiu, com o mundo do jeito que estava. Só uma sala ou um jogo NOVO começa do zero (os antigos continuam na lista).
+let WORLD = null, BOOTSEED = 0, svT = 20;
+const SAVE_MAX = 12;
+const svGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } };
+const svSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } };
+const svPk = (x, z, y) => Math.round(x * 20) + ',' + Math.round(z * 20) + ',' + Math.round((y || 0) * 10);
+const newSeed = () => Math.floor(RNDT() * 2147483647);
+const pKey = () => 'zm_p_' + WORLD.id + (WORLD.joined ? '_j' : '');
+function worldsList(){ const L = svGet('zm_worlds'); return Array.isArray(L) ? L : []; }
+function worldsPut(meta){
+  const L = worldsList().filter(w => w.id !== meta.id); L.unshift(meta);
+  while (L.length > SAVE_MAX){ const o = L.pop(); try { localStorage.removeItem('zm_w_' + o.id); localStorage.removeItem('zm_p_' + o.id); } catch(e){} }
+  svSet('zm_worlds', L);
+}
+function worldDel(id){ svSet('zm_worlds', worldsList().filter(w => w.id !== id)); try { localStorage.removeItem('zm_w_' + id); localStorage.removeItem('zm_p_' + id); localStorage.removeItem('zm_p_' + id + '_j'); } catch(e){} }
+function worldNew(seed, code){
+  const n = (svGet('zm_wn') || 0) + 1; svSet('zm_wn', n);
+  WORLD = {id:rid(8), seed, map:SMALL ? 'p' : 'g', nome:'Mundo ' + n, code:code || '', sala:!!code, criado:Date.now(), jogado:Date.now(), dia:1, ver:GAME_VER};
+  worldsPut(WORLD); svT = 3;
+}
+// estado de partida (logo depois de gerar a cidade): só o que mudar depois disso vai para o arquivo
+function svBase(){
+  for (const c of containers) c.l0 = c.loot.join(',');
+  for (const e of ents) e.s0 = svEnt(e);
+  for (const v of VEH){ v.x0 = v.x; v.z0 = v.z; }
+}
+const svEnt = e => e.type === 'door' ? e.state + ':' + Math.round(e.hp) + (e.scrap ? 's' : '') : (e.broken ? 'b' : '') + Math.round(e.hp);
+function worldState(){
+  const st = {v:1, gm:gameMin, rn:rainOn ? 1 : 0, o:netRoomOpts(), bl:BUILT.map(bldSer), c:[], e:[], vh:[], wg:[], wd:[]};
+  for (const c of containers){ if (c.l0 === undefined) continue; const lj = c.loot.join(','); if (!c.aberto && lj === c.l0) continue; st.c.push([svPk(c.x, c.z, c.y), c.tipo, c.loot.slice(), c.aberto ? 1 : 0]); }
+  for (const e of ents){ if (e.s0 === undefined || svEnt(e) === e.s0) continue; st.e.push([svPk(e.x, e.z, e.y), e.type, e.type === 'door' ? e.state : (e.broken ? 1 : 0), Math.round(e.hp), e.scrap ? 1 : 0]); }
+  for (const v of VEH) if (v.moved && v.x0 !== undefined) st.vh.push([svPk(v.x0, v.z0, 0), r2(v.x), r2(v.y), r2(v.z), r2(v.yaw), Math.round(v.fuel), Math.round(v.hp)]);
+  for (const o of WIT){ if (o.k[0] === 'g' && o.gone) st.wg.push(svPk(o.x, o.z, o.y)); else if (o.k[0] === 'd' && !o.gone) st.wd.push(witSer(o)); }
+  return st;
+}
+function applyWorldState(st){
+  if (!st) return;
+  const cm = new Map(); for (let i = 0; i < containers.length; i++){ const c = containers[i]; if (c.l0 !== undefined) cm.set(svPk(c.x, c.z, c.y) + c.tipo, i); }
+  for (const [k, t, loot, ab] of st.c || []){ const i = cm.get(k + t); if (i === undefined) continue; const c = containers[i]; c.loot = (loot || []).filter(id => ITEMS[id]); c.aberto = !!ab;
+    if (NET.on && NET.role === 'host'){ NET.contSig.set(i, contSig(c)); NET.contChanged.set(i, [c.loot.slice(), c.aberto ? 1 : 0]); } }
+  const em = new Map(); for (const e of ents) if (e.s0 !== undefined) em.set(svPk(e.x, e.z, e.y) + e.type, e);
+  for (const [k, t, s, hp, scrap] of st.e || []){
+    const e = em.get(k + t); if (!e) continue; e.hp = hp;
+    if (t === 'door'){ e.state = s; e.col.off = s === 'aberta' || s === 'quebrada'; if (s === 'quebrada'){ e.fallK = 1; e.wob = 0; } e.scrap = !!scrap; }
+    else if (s && !e.broken){ e.broken = true; e.pane.off = true; if (e.sill) e.sill.zp = true; }
+    setEntMatrix(e);
+  }
+  const vm = new Map(); for (const v of VEH) if (v.x0 !== undefined) vm.set(svPk(v.x0, v.z0, 0), v);
+  for (const [k, x, y, z, yaw, fuel, hp] of st.vh || []){ const v = vm.get(k); if (!v) continue; v.x = x; v.y = y; v.z = z; v.yaw = yaw; v.fuel = fuel; v.hp = hp; v.dead = hp <= 0; v.spd = 0; v.moved = true; v.g.position.set(x, y, z); v.g.rotation.set(0, yaw, 0); }
+  for (const q of st.bl || []) bldAdd(bldDe(q));
+  const wm = new Map(); for (const o of WIT) if (o.k[0] === 'g') wm.set(svPk(o.x, o.z, o.y), o);
+  for (const k of st.wg || []){ const o = wm.get(k); if (o) o.gone = true; }
+  for (const q of st.wd || []) witAdd(witDe(q));
+  if (st.gm !== undefined) gameMin = st.gm; rainOn = !!st.rn;
+}
+function playerState(){
+  if (!P) return null;
+  return {x:r2(P.x), y:r2(P.y), z:r2(P.z), yaw:r2(P.yaw), vida:Math.max(P.dead ? 60 : 1, Math.round(P.vida)), fome:Math.round(P.fome), sede:Math.round(P.sede), stam:Math.round(P.stam), sang:P.dead ? 0 : P.sang,
+    infect:!P.dead && !!P.infect, infT:P.infT || 0, infLvl:P.infLvl || 0, febre:!P.dead && !!P.febre, kills:P.kills, ammo:Object.assign({}, P.ammo), mat:Object.assign({}, P.mat),
+    inv:P.inv.map(i => { const o = {id:i.id}; if (i.dur !== undefined) o.dur = i.dur; if (i.mag !== undefined) o.mag = i.mag; if (i.sil) o.sil = 1; return o; }), eq:P.inv.indexOf(P.equip)};
+}
+function applyPlayer(ps){
+  if (!ps || !P) return false;
+  P.inv = (ps.inv || []).filter(i => ITEMS[i.id]).slice(0, 16); P.equip = ps.eq >= 0 && P.inv[ps.eq] && ITEMS[P.inv[ps.eq].id].tipo === 'arma' ? P.inv[ps.eq] : null;
+  Object.assign(P.ammo, ps.ammo || {}); Object.assign(P.mat, ps.mat || {});
+  for (const k of ['vida', 'fome', 'sede', 'stam', 'sang', 'infect', 'infT', 'infLvl', 'febre', 'kills']) if (ps[k] !== undefined) P[k] = ps[k];
+  if (ps.x !== undefined){
+    const y = groundAt(ps.x, ps.z, 0.3, ps.y + 0.6);
+    if (!hitAny(ps.x, ps.z, 0.3, y + 0.05) && Math.abs(y - ps.y) < 3){ P.x = ps.x; P.z = ps.z; P.y = P.ground = y; P.yaw = ps.yaw || 0; }
+  }
+  P.vy = 0; setVM(); hudT = 0; return true;
+}
+function saveNow(why){
+  if (!WORLD || !P) return;
+  const ps = playerState(); if (ps) svSet(pKey(), ps);
+  if (WORLD.joined) return;   // o mundo da sala de um amigo fica salvo no aparelho dele
+  if (!svSet('zm_w_' + WORLD.id, worldState())){ if (!WORLD.full){ WORLD.full = true; log('⚠ Sem espaço para salvar o mundo neste aparelho. Apague mundos antigos no menu.', '#ff9a8a'); } return; }
+  WORLD.jogado = Date.now(); WORLD.dia = Math.floor(gameMin / 1440) + 1; WORLD.ver = GAME_VER; worldsPut(WORLD);
+}
+function updateSave(dt){ if (!WORLD) return; svT -= dt; if (svT <= 0){ svT = 20; saveNow(); } }
+addEventListener('pagehide', () => saveNow());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
+// ---------- renascer perto de onde morreu ----------
+function respawnSpot(){
+  const ox = P.dx === undefined ? P.x : P.dx, oz = P.dz === undefined ? P.z : P.dz;
+  for (let k = 0; k < 120; k++){
+    const a = Math.random() * Math.PI * 2, r = R(14, 50), x = ox + Math.cos(a) * r, z = oz + Math.sin(a) * r;
+    if (x < WX1 + 5 || x > WX2 - 5 || z < WZ1 + 5 || z > WZ2 - 5 || inHouse(x, z, 0.5) || onRail(x, z, 2)) continue;
+    const y = groundAt(x, z, 0.3, terrainAt(x, z) + 1.2); if (hitAny(x, z, 0.4, y + 0.05)) continue;
+    if (zombies.some(q => !(q.dead) && Math.abs(q.x - x) < 14 && Math.abs(q.z - z) < 14 && Math.hypot(q.x - x, q.z - z) < 12)) continue;
+    return {x, y, z, d:Math.round(Math.hypot(x - ox, z - oz))};
+  }
+  return {x:ox, y:groundAt(ox, oz, 0.3, (P.y || 0) + 1), z:oz, d:0};
+}
+function respawnHere(){
+  const s = respawnSpot(); P.x = s.x; P.z = s.z; P.y = P.ground = s.y; P.vy = 0;
+  P.dead = false; P.dragged = false; P.vida = 60; P.sang = 0; P.infect = false; P.febre = false; P.infT = 0; P.fome = Math.max(P.fome, 50); P.sede = Math.max(P.sede, 50); P.panic = 0; P.car = null; P.climb = null; P.stam = 100;
+  $('#dead').style.display = 'none'; running = true; paused = false; lock();
+  log('Você renasceu a ' + s.d + ' m de onde morreu. Sua mochila e o mundo continuam como estavam.', '#9fd4ff'); saveNow();
+}
+// ---------- tela inicial: lista dos mundos ----------
+function worldsRender(){
+  const el = $('#svList'); if (!el) return; const L = worldsList();
+  if (!L.length){ el.innerHTML = '<div class="svE">Nenhum mundo salvo ainda. Comece um jogo sozinho ou crie uma sala: ele fica salvo aqui sozinho.</div>'; return; }
+  const dt = t => { const d = new Date(t); return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}); };
+  el.innerHTML = L.map(w => `<div class="svR"><div class="svN"><b>${w.nome}</b><span>dia ${w.dia || 1} · ${w.sala ? 'sala ' + (w.code || '') : 'sozinho'} · ${w.map === 'p' ? 'mapa do celular' : 'mapa grande'} · ${dt(w.jogado || w.criado)}${w.ver !== GAME_VER ? ' · <i>versão antiga: a cidade pode ter mudado um pouco</i>' : ''}</span></div>
+    <button class="btn s" data-w="${w.id}" data-m="solo">JOGAR</button><button class="btn s g" data-w="${w.id}" data-m="sala">ABRIR SALA</button><button class="btn s g svX" data-w="${w.id}" data-m="del" title="Apagar">🗑</button></div>`).join('');
+}
+function worldsClick(e){
+  const b = e.target.closest('[data-w]'); if (!b) return; e.stopPropagation();
+  const id = b.dataset.w, m = b.dataset.m;
+  if (m === 'del'){ if (b.dataset.ok !== '1'){ b.dataset.ok = '1'; b.textContent = 'APAGAR?'; setTimeout(() => { b.dataset.ok = ''; b.textContent = '🗑'; }, 2500); return; } worldDel(id); worldsRender(); return; }
+  worldPlay(id, m === 'sala');
+}
+function worldPlay(id, asRoom){
+  const w = worldsList().find(q => q.id === id); if (!w){ mpMsg('Esse mundo não existe mais.', true); return; }
+  const myMap = SMALL ? 'p' : 'g';
+  if (w.map !== myMap){ const u = new URL(location.href); u.searchParams.set('mapa', w.map); u.searchParams.set('mundo', id); u.searchParams.set('modo', asRoom ? 'sala' : 'solo'); u.searchParams.delete('sala'); u.searchParams.delete('auto'); mpMsg('Abrindo o mundo com o mapa do tamanho certo...'); location.href = u.toString(); return; }
+  const st = svGet('zm_w_' + id) || {};
+  if (st.o) for (const k of ROOM_KEYS) if (st.o[k] !== undefined) CFG[k] = st.o[k];
+  NEWGAME = false; mpMsg('Carregando ' + w.nome + '...');
+  const go = () => {
+    newGame(w.seed); applyWorldState(st); WORLD = w; applyPlayer(svGet('zm_p_' + id));
+    return w;
+  };
+  if (asRoom){
+    const code = w.code || rid(4), name = mpName(); NET.seed = w.seed; netStart('host', code, name);
+    setTimeout(() => { newGame(w.seed); netInitTracking(); applyWorldState(st); WORLD = w; w.code = code; w.sala = true; applyPlayer(svGet('zm_p_' + id)); NET.ready = true; start(); netHud();
+      log(w.nome + ' aberto como sala ' + code + ' (dia ' + (Math.floor(gameMin / 1440) + 1) + '). Mande o código para os amigos.', '#9fd4ff'); saveNow(); }, 40);
+  } else setTimeout(() => { go(); start(); log(w.nome + ' carregado: dia ' + (Math.floor(gameMin / 1440) + 1) + '.', '#9fd4ff'); saveNow(); }, 40);
+}
+
+// ================= FOGO AMIGO (opção da sala, para jogar x1) =================
+// O tiro e o golpe acertam o boneco do amigo na sua tela; quem levou recebe o dano (só se a sala estiver com fogo amigo ligado).
+function ffRay(o, hx, hz, tp, tmax){
+  if (!(CFG.ffire && NET.on && NET.ready)) return null; let best = null;
+  for (const p of NET.peers.values()){
+    const rp = p.rp, s = p.st; if (!rp || !s || (s.fl & 32) || rp.car) continue;
+    const dx = rp.x - o.x, dz = rp.z - o.z, t = dx * hx + dz * hz; if (t < 0.2 || t > tmax) continue;
+    if (Math.abs(dx * hz - dz * hx) > 0.36) continue;
+    const y = o.y + tp * t, hgt = rp.agach ? 1.2 : 1.8; if (y < rp.y || y > rp.y + hgt) continue;
+    if (!best || t < best.t) best = {p, t, head:y > rp.y + hgt - 0.3, x:o.x + hx * t, y, z:o.z + hz * t};
+  }
+  if (best && (bldRay(o, hx, hz, tp, best.t) || !losLine(o.x, o.y, o.z, best.x, best.y, best.z))) return null;
+  return best;
+}
+function ffHit(p, dmg, x, y, z){
+  netSend({t:'pv', to:p.id, d:Math.round(dmg), n:NET.name}); P.hitT = 0.25;
+  if (x !== undefined){ blood(x, y, z, 6); }
+  sfx('hpunch', 0.4, p.rp.x, p.rp.z) || noiseSnd(0.06, 0.1, 400);
+}
+function ffMelee(w){
+  if (!(CFG.ffire && NET.on && NET.ready)) return;
+  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+  for (const p of NET.peers.values()){
+    const rp = p.rp, s = p.st; if (!rp || !s || (s.fl & 32) || rp.car) continue;
+    const dx = rp.x - P.x, dz = rp.z - P.z, d = Math.hypot(dx, dz); if (d > (w.alc || 1.5) + 0.3 || Math.abs(rp.y - P.y) > 1.2 || (dx * fx + dz * fz) / (d || 1) < 0.5) continue;
+    if (!losH(P.x, P.z, rp.x, rp.z, P.y + 1.1)) continue;
+    ffHit(p, w.dano, rp.x, rp.y + 1.2, rp.z);
+  }
+}
+function ffOnHit(m){
+  if (!CFG.ffire || !P || P.dead || !running) return;
+  P.vida -= m.d; if (m.d >= 20) P.sang++; shake = 0.3; P.panic = Math.min(100, P.panic + 15); P.killer = m.n;
+  const el = $('#dmg'); el.style.boxShadow = 'inset 0 0 160px 60px rgba(170,0,0,.65)'; setTimeout(() => el.style.boxShadow = 'inset 0 0 160px 60px rgba(160,0,0,0)', 180);
+  sfx('hurt', 0.6) || toneSnd(220, 120, 0.25, 0.08, 'square');
+  log('⚠ ' + (m.n || 'Um amigo') + ' te acertou (−' + m.d + ' de vida)!', '#ff5a4a');
+  if (P.vida <= 0) netSend({t:'pk', to:m.f, n:NET.name});
+}
+
 // ================= PILHA DE ZUMBIS =================
 // Quando o alvo está num lugar alto que eles não alcançam (telhado, muro, carro, prédio) e não há escada,
 // os zumbis que perseguem se amontoam encostados na parede e sobem uns por cima dos outros.
@@ -5639,7 +6084,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-19';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-23';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
@@ -5705,6 +6150,10 @@ function netOnMsg(m){
   if (t === 'vx') return netApplyVeh(m.v);
   if (t === 'ad') return netAnimalBite(m);
   if (t === 'bp' || t === 'bo' || t === 'bh' || t === 'bx' || t === 'bf' || t === 'bd') return bldNet(m);
+  if (t === 'wi'){ const o = WITK.get(m.k); if (o) witGone(o, false); return; }
+  if (t === 'wd'){ witAdd(witDe(m.o)); return; }
+  if (t === 'pv') return ffOnHit(m);
+  if (t === 'pk'){ log('🎯 Você abateu ' + (m.n || 'o amigo') + '!', '#9fe09a'); return; }
 }
 // ---------- carros iguais para todos ----------
 function netVehSig(v){ return [VEH.indexOf(v), r2(v.x), r2(v.y), r2(v.z), r2(v.yaw), Math.round(v.fuel), Math.round(v.hp)]; }
@@ -5718,7 +6167,7 @@ function netApplyOpts(o, say){
   if (ch && panel === 'cfg' && cfgTab === ROOM_TAB) renderCfg();
 }
 function netWelcome(to){
-  netSend({t:'wel', to, ver:GAME_VER, vm:netVehMoved(), o:netRoomOpts(), seed:NET.seed, map:SMALL ? 'p' : 'g', gm:gameMin, x:r2(P.x), y:r2(P.y), z:r2(P.z), rn:rainOn ? 1 : 0,
+  netSend({t:'wel', to, ver:GAME_VER, wid:WORLD ? WORLD.id : '', wg:WIT.filter(o => o.gone && o.k[0] === 'g').map(o => o.k), wl:WIT.filter(o => !o.gone && o.k[0] === 'd').map(witSer), vm:netVehMoved(), o:netRoomOpts(), seed:NET.seed, map:SMALL ? 'p' : 'g', gm:gameMin, x:r2(P.x), y:r2(P.y), z:r2(P.z), rn:rainOn ? 1 : 0,
     bl:BUILT.map(bldSer), e:[...NET.entChanged.entries()].map(([i, v]) => [i, v[0], v[1]]), c:[...NET.contChanged.entries()].map(([i, v]) => [i, v[0], v[1]])});
 }
 function netJoinWorld(w){
@@ -5742,8 +6191,10 @@ function netJoinWorld(w){
     const a = RNDT() * 6.28; P.x = w.x + Math.cos(a) * 1.6; P.z = w.z + Math.sin(a) * 1.6; P.y = groundAt(P.x, P.z, 0.3, w.y + 1.5); P.ground = P.y;
     if (hitAny(P.x, P.z, 0.35, P.y + 0.05)){ P.x = w.x; P.z = w.z; P.y = w.y; P.ground = P.y; }
     gameMin = w.gm; rainOn = !!w.rn;
-    netInitTracking(); netApplyEnts(w.e || []); for (const q of w.bl || []) bldAdd(bldDe(q)); netApplyConts(w.c || []); for (const q of w.vm || []) netApplyVeh(q);
+    netInitTracking(); netApplyEnts(w.e || []); for (const k of w.wg || []){ const o = WITK.get(k); if (o) o.gone = true; } for (const q of w.wl || []) witAdd(witDe(q));
+    WORLD = {id:w.wid || ('sala-' + NET.code + '-' + w.seed), joined:true}; svT = 20; for (const q of w.bl || []) bldAdd(bldDe(q)); netApplyConts(w.c || []); for (const q of w.vm || []) netApplyVeh(q);
     for (const a of animals) scene.remove(a.g); animals.length = 0;   // os animais vêm do anfitrião
+    if (applyPlayer(svGet(pKey()))) setTimeout(() => log('Seu personagem voltou de onde você parou neste mundo.', '#9fd4ff'), 600);
     NET.ready = true; NET.joining = false; start(); netHud();
     log('Você entrou na sala ' + NET.code + '. Os zumbis são os mesmos para todos!', '#9fd4ff');
   }, 40);
@@ -5947,7 +6398,7 @@ function netDrawPeers(dt){
   for (const p of [...NET.peers.values()]){
     const s = p.st; if (!s) continue;
     if (now - p.last > 7000){ netPeerGone(p); continue; }
-    if (!p.pm){ p.pm = buildPlayerModel(); p.pm.g.add(netTag(p.name)); p.tagName = p.name; p.rp = {x:s.x, y:s.y, z:s.z, yaw:s.yw, pitch:s.pt, agach:false, aim:false, aimK:0, equip:null, reload:0, view:3, mvx:0, mvz:0, climb:null, act:null, fin:null, shoveT:0, kick:null, car:null, land:0, vy:0, recoil:0, luz:false, pend:null, ground:s.y}; p.swing = 0; p.muz = 0; p.sh = s.sh; p.sw = s.sw; }
+    if (!p.pm){ p.pm = buildPlayerModel(); p.pm.g.add(p.tag = netTag(p.name)); p.tagName = p.name; p.rp = {x:s.x, y:s.y, z:s.z, yaw:s.yw, pitch:s.pt, agach:false, aim:false, aimK:0, equip:null, reload:0, view:3, mvx:0, mvz:0, climb:null, act:null, fin:null, shoveT:0, kick:null, car:null, land:0, vy:0, recoil:0, luz:false, pend:null, ground:s.y}; p.swing = 0; p.muz = 0; p.sh = s.sh; p.sw = s.sw; }
     const rp = p.rp, ox = rp.x, oz = rp.z, k = Math.min(1, dt * 12);
     if (Math.hypot(s.x - rp.x, s.z - rp.z) > 6){ rp.x = s.x; rp.z = s.z; rp.y = s.y; } else { rp.x += (s.x - rp.x) * k; rp.y += (s.y - rp.y) * k; rp.z += (s.z - rp.z) * k; }
     rp.yaw = lerpAng(rp.yaw, s.yw, k); rp.pitch += (s.pt - rp.pitch) * k;
@@ -5988,6 +6439,7 @@ function netDrawPeers(dt){
     if (dead || far){ p.pm.g.visible = p.pm.ag.visible = false; }
     else if (!rp.car){ p.pm.g.visible = p.pm.ag.visible = true; }
     p.pm.lensMat.color.setHex(rp.luz ? 0xfff6d8 : 0x4a4a4a); p.pm.glow.visible = rp.luz && !rp.car;
+    if (p.tag){ p.tagT = (p.tagT || 0) - dt; if (p.tagT <= 0){ p.tagT = 0.2; const C = camera.position, hy = rp.y + (rp.agach ? 1.15 : 1.7); p.tag.visible = Math.hypot(rp.x - C.x, rp.z - C.z) < 60 && losLine(C.x, C.y, C.z, rp.x, hy, rp.z); } }
   }
 }
 
@@ -6060,16 +6512,16 @@ die = function(){
   _die();
   if (!NET.on) return;
   netSend(netMyState());
-  $('#bRetry').textContent = 'RENASCER PERTO DOS AMIGOS';
+  $('#bRetry').textContent = 'RENASCER AQUI PERTO';
   $('#bRetry').onclick = netRespawn;
 };
 function netRespawn(){
   const alive = [...NET.peers.values()].filter(p => p.st && !(p.st.fl & 32) && p.rp);
-  if (alive.length){ const p = alive[0]; P.x = p.rp.x + 1.2; P.z = p.rp.z; P.y = groundAt(P.x, P.z, 0.3, p.rp.y + 1.5); }
+  const sp = respawnSpot(); P.x = sp.x; P.z = sp.z; P.y = sp.y; // renasce a até 50 m de onde morreu
   P.ground = P.y; P.vy = 0; P.dead = false; P.dragged = false; P.vida = 70; P.sang = 0; P.infect = false; P.febre = false; P.fome = Math.max(P.fome, 50); P.sede = Math.max(P.sede, 50); P.panic = 0; P.car = null;
   if (!P.inv.some(it => ITEMS[it.id] && ITEMS[it.id].fogo)){ addItem('pistola'); const pi = P.inv.find(it => it.id === 'pistola'); if (pi) pi.mag = 15; P.ammo['9mm'] = (P.ammo['9mm'] || 0) + 15; }
   $('#dead').style.display = 'none'; running = true; paused = false; lock();
-  log('Você renasceu perto dos amigos.', '#9fd4ff');
+  log('Você renasceu a ' + sp.d + ' m de onde morreu. A mochila e o mundo continuam como estavam.', '#9fd4ff'); saveNow();
 }
 
 // ---------- tela inicial e HUD da sala ----------
@@ -6081,7 +6533,7 @@ function mpCreate(){
   NET.seed = Math.floor(RNDT() * 2147483647);
   netStart('host', code, name);
   mpMsg('Criando a sala ' + code + ' e gerando a cidade...');
-  setTimeout(() => { newGame(NET.seed); netInitTracking(); NET.ready = true; start(); netHud(); log('Sala ' + code + ' criada! Mande o código (ou o botão CONVIDAR) para seus amigos.', '#9fd4ff'); }, 40);
+  setTimeout(() => { newGame(NET.seed); worldNew(NET.seed, code); netInitTracking(); NET.ready = true; start(); netHud(); log('Sala ' + code + ' criada! Mande o código (ou o botão CONVIDAR) para seus amigos.', '#9fd4ff'); }, 40);
 }
 function mpJoin(codeArg){
   const code = String(codeArg || $('#mpCode').value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -6126,12 +6578,13 @@ function askMenu(btn){
   btn.dataset.ok = ''; btn.textContent = btn.dataset.t; backToMenu();
 }
 function backToMenu(){
+  saveNow();
   if (NET.on) netStop();
   if (P && P.car){ try { stopEngine(P.car); } catch(e){} P.car.occ = false; }
   running = false; paused = false; HUDED = false; unlock(); hidePanels(); panel = null;
   for (const id of ['#pause', '#dead', '#hud', '#touch', '#prompt', '#act', '#hudEd']){ const el = $(id); if (el) el.style.display = 'none'; }
   $('#fear').style.opacity = 0; touch.mx = touch.mz = 0; touch.atk = touch.aim = touch.run = false; mouseAim = false; mouseDown = false;
-  $('#bRetry').textContent = 'TENTAR DE NOVO'; $('#bRetry').onclick = () => { newGame(); start(); };
+  $('#bRetry').textContent = 'RENASCER AQUI PERTO'; $('#bRetry').onclick = respawnHere; WORLD = null; worldsRender();
   NEWGAME = true; mpMsg(''); $('#start').style.display = 'flex';
 }
 // ---------- aplicativo instalado (tela de início) ----------
@@ -6154,6 +6607,8 @@ function mpSetup(){
   const n = (() => { try { return localStorage.getItem('zmNome'); } catch(e){ return null; } })() || QS.get('nome') || '';
   $('#mpName').value = QS.get('nome') || n; const sala = (QS.get('sala') || '').toUpperCase(); if (sala) $('#mpCode').value = sala;
   $('#mpCreate').onclick = mpCreate; $('#mpJoin').onclick = () => mpJoin();
+  worldsRender(); $('#svList').addEventListener('click', worldsClick);
+  if (QS.get('mundo')) setTimeout(() => worldPlay(QS.get('mundo'), QS.get('modo') === 'sala'), 300);
   $('#mpCode').addEventListener('keydown', e => { if (e.key === 'Enter') mpJoin(); e.stopPropagation(); });
   $('#mpName').addEventListener('keydown', e => e.stopPropagation());
   if (sala && QS.get('auto') === '1') setTimeout(() => mpJoin(sala), 300);
