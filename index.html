@@ -2221,38 +2221,60 @@ function spawnAnimals(){
 function scareAnimals(x, z, r){
   for (const a of animals){ if (a.dead || a.state === 'charge') continue; if ((a.x - x) ** 2 + (a.z - z) ** 2 < r * r){ a.state = 'flee'; a.t = R(4, 7); a.fx = x; a.fz = z; } }
 }
-function hitAnimal(a, dmg){
-  if (a.dead) return; a.hp -= dmg; blood(a.x, a.y + a.d.h * 0.6, a.z, 8); P.hitT = 0.25;
+function animalCarcass(a){ const c = {x:a.x, z:a.z, y:a.y, tipo:'carcaca', nome:'Carcaça de ' + a.d.nome, loot:Array(a.d.carne).fill('carne'), aberto:true, range:1.9}; containers.push(c); a.cont = c; }
+function animalBite(dm){ P.vida -= dm; shake = 0.3; P.panic = Math.min(100, P.panic + 10); log('O javali te atacou!', '#f0a090'); toneSnd(180, 90, 0.2, 0.08, 'square'); if (Math.random() < 0.4) P.sang++; }
+function netAnimalBite(m){ if (!P.dead && !P.car) animalBite(m.dm || 10); }
+// o jogador mais perto do animal (no anfitrião conta os amigos também)
+function animalTarget(a){
+  if (typeof NET === 'undefined' || !NET.on || NET.role !== 'host' || !NET.peers.size) return P;
+  let best = P, bd = P.dead ? 1e9 : Math.hypot(P.x - a.x, P.z - a.z);
+  for (const p of NET.peers.values()){ if (!p.st || (p.st.fl & 32)) continue; const d = Math.hypot(p.proxy.x - a.x, p.proxy.z - a.z); if (d < bd){ bd = d; best = p.proxy; } }
+  return best;
+}
+function hitAnimal(a, dmg, from){
+  if (a.dead) return;
+  if (a.rep){ blood(a.x, a.y + a.d.h * 0.6, a.z, 8); P.hitT = 0.25; a.myHit = performance.now(); NET.ahits.push([a.nid, Math.round(dmg * 10) / 10]); return; }   // quem decide é o anfitrião
+  a.hp -= dmg; blood(a.x, a.y + a.d.h * 0.6, a.z, 8); if (!from) P.hitT = 0.25;
   if (a.hp <= 0){
-    a.dead = true; a.deadT = 0; a.dir = Math.random() < 0.5 ? 1 : -1;
-    const c = {x:a.x, z:a.z, y:a.y, tipo:'carcaca', nome:'Carcaça de ' + a.d.nome, loot:Array(a.d.carne).fill('carne'), aberto:true, range:1.9}; containers.push(c); a.cont = c;
-    log('Você abateu um(a) ' + a.d.nome + '! Revista a carcaça (E) para pegar a carne.', '#c9e0a0'); return;
+    a.dead = true; a.deadT = 0; a.dir = Math.random() < 0.5 ? 1 : -1; animalCarcass(a);
+    if (!from) log('Você abateu um(a) ' + a.d.nome + '! Revista a carcaça (E) para pegar a carne.', '#c9e0a0'); return;
   }
-  if (a.d.aggr && Math.random() < 0.65){ a.state = 'charge'; a.t = 6; } else { a.state = 'flee'; a.t = R(5, 8); a.fx = P.x; a.fz = P.z; }
+  const src = from || P;
+  if (a.d.aggr && Math.random() < 0.65){ a.state = 'charge'; a.t = 6; } else { a.state = 'flee'; a.t = R(5, 8); a.fx = src.x; a.fz = src.z; }
 }
 function updateAnimals(dt){
   const far = scene.fog.far + 10;
   animT -= dt;
+  if (animT <= 0 && typeof NET !== 'undefined' && NET.on && NET.role === 'join') animT = 8;
   if (animT <= 0){ animT = 8; let w = 0; for (const a of animals) if (!a.home && !a.dead) w++; if (w < (isTouch ? 50 : 100) * (+CFG.animals || 1)){ const t = pick(['veado', 'veado', 'javali', 'coelho', 'coelho', 'capivara', 'peru']); const p = wildSpot(t, 80); if (p) makeAnimal(t, p[0], p[1], null); } }
   for (let i = animals.length - 1; i >= 0; i--){
-    const a = animals[i], d = a.d, dx = P.x - a.x, dz = P.z - a.z, dp = Math.hypot(dx, dz) || 0.01;
-    a.g.visible = dp < far;
+    const a = animals[i], d = a.d, T = animalTarget(a), dx = T.x - a.x, dz = T.z - a.z, dp = Math.hypot(dx, dz) || 0.01, dl = Math.hypot(P.x - a.x, P.z - a.z);
+    a.g.visible = dl < far;
+    if (a.rep && a.net && (a.net.fl & 4) && !a.dead){ a.dead = true; a.deadT = 0; a.dir = Math.random() < 0.5 ? 1 : -1; animalCarcass(a); if (performance.now() - (a.myHit || -1e9) < 3000) log('Você abateu um(a) ' + d.nome + '! Revista a carcaça (E) para pegar a carne.', '#c9e0a0'); }
     if (a.dead){
       a.deadT += dt; const k = Math.min(1, (a.deadT / 0.5) ** 2); a.g.rotation.z = k * Math.PI / 2 * a.dir; a.g.position.y = a.y + k * Math.min(d.h * 0.25, 0.3);
-      if ((a.deadT > 600 || (a.cont && !a.cont.loot.length && a.deadT > 30)) && dp > 30){ scene.remove(a.g); const ci = containers.indexOf(a.cont); if (ci >= 0) containers.splice(ci, 1); animals.splice(i, 1); }
+      if ((a.deadT > 600 || (a.cont && !a.cont.loot.length && a.deadT > 30)) && dl > 30 && !a.rep){ scene.remove(a.g); const ci = containers.indexOf(a.cont); if (ci >= 0) containers.splice(ci, 1); animals.splice(i, 1); }
       continue;
     }
+    let sp = 0, vx = 0, vz = 0;
+    if (a.rep){   // cópia de um animal do anfitrião: só segue a posição que chega pela rede
+      const n = a.net; if (!n) continue; const ox = a.x, oz = a.z, k = Math.min(1, dt * 8);
+      if (Math.hypot(n.x - a.x, n.z - a.z) > 10){ a.x = n.x; a.z = n.z; } else { a.x += (n.x - a.x) * k; a.z += (n.z - a.z) * k; }
+      a.yaw = lerpAng(a.yaw, n.yaw, k); sp = (n.fl & 1) ? Math.max(0.5, Math.hypot(a.x - ox, a.z - oz) / Math.max(dt, 1e-3)) : 0;
+      a.anim += dt * sp * (d.hop ? 2.2 : 3.2) / Math.max(0.35, d.legH * 2); const gy = groundAt(a.x, a.z, 0.2, a.y + 0.4); a.y += (gy - a.y) * Math.min(1, dt * 10);
+    } else {
     if (dp > 150) continue;
-    let fr = d.flee * (P.agach ? 0.5 : 1) * ((keys.ShiftLeft || touch.run) ? 1.4 : 1);
-    if (dp < fr && a.state !== 'flee' && a.state !== 'charge' && Math.abs(P.y - a.y) < 4){ if (d.aggr && dp < 7 && Math.random() < 0.4){ a.state = 'charge'; a.t = 6; } else { a.state = 'flee'; a.t = R(4, 7); a.fx = P.x; a.fz = P.z; } }
-    a.t -= dt; let sp = 0, vx = 0, vz = 0;
+    const runT = T === P ? (keys.ShiftLeft || touch.run) : Math.hypot(T.mvx || 0, T.mvz || 0) > 0;
+    let fr = d.flee * (T.agach ? 0.5 : 1) * (runT ? 1.4 : 1);
+    if (dp < fr && a.state !== 'flee' && a.state !== 'charge' && Math.abs(T.y - a.y) < 4){ if (d.aggr && dp < 7 && Math.random() < 0.4){ a.state = 'charge'; a.t = 6; } else { a.state = 'flee'; a.t = R(4, 7); a.fx = T.x; a.fz = T.z; } }
+    a.t -= dt;
     if (a.state === 'idle'){ if (a.t <= 0){ if (Math.random() < 0.6){ const h = a.home; a.tx = h ? R(h.x1 + 0.6, h.x2 - 0.6) : a.x + R(-10, 10); a.tz = h ? R(h.z1 + 0.6, h.z2 - 0.6) : a.z + R(-10, 10); a.state = 'walk'; a.t = R(3, 8); } else a.t = R(2, 5); } }
     else if (a.state === 'walk'){ const ex = a.tx - a.x, ez = a.tz - a.z, e = Math.hypot(ex, ez); if (e < 0.4 || a.t <= 0){ a.state = 'idle'; a.t = R(2, 6); } else { vx = ex / e; vz = ez / e; sp = d.walk; } }
     else if (a.state === 'flee'){ const ex = a.x - a.fx, ez = a.z - a.fz, e = Math.hypot(ex, ez) || 1; vx = ex / e + Math.sin(a.anim * 0.3) * 0.3; vz = ez / e + Math.cos(a.anim * 0.3) * 0.3; sp = d.run; if (a.t <= 0 && Math.hypot(a.x - a.fx, a.z - a.fz) > d.flee * 1.3){ a.state = 'idle'; a.t = R(1, 3); } }
     else if (a.state === 'charge'){
       vx = dx / dp; vz = dz / dp; sp = dp > 1.3 ? d.run : 0; a.atk -= dt;
-      if (dp < 1.4 && a.atk <= 0 && Math.abs(P.y - a.y) < 1.2){ a.atk = 1.4; const dm = R(8, 15) * CFG.zDmg; P.vida -= dm; shake = 0.3; P.panic = Math.min(100, P.panic + 10); log('O javali te atacou!', '#f0a090'); toneSnd(180, 90, 0.2, 0.08, 'square'); if (Math.random() < 0.4) P.sang++; }
-      if (a.t <= 0 || a.hp < d.hp * 0.35){ a.state = 'flee'; a.t = R(5, 8); a.fx = P.x; a.fz = P.z; }
+      if (dp < 1.4 && a.atk <= 0 && Math.abs(T.y - a.y) < 1.2 && !T.car){ a.atk = 1.4; const dm = R(8, 15) * CFG.zDmg; if (T === P) animalBite(dm); else netSend({t:'ad', to:T.id, dm:Math.round(dm)}); }
+      if (a.t <= 0 || a.hp < d.hp * 0.35){ a.state = 'flee'; a.t = R(5, 8); a.fx = T.x; a.fz = T.z; }
     }
     if (sp > 0){
       const n = Math.hypot(vx, vz) || 1; vx /= n; vz /= n;
@@ -2262,6 +2284,8 @@ function updateAnimals(dt){
       a.yaw = lerpAng(a.yaw, Math.atan2(vx, vz), dt * 7); a.anim += dt * sp * (d.hop ? 2.2 : 3.2) / Math.max(0.35, d.legH * 2);
       const gy = groundAt(a.x, a.z, 0.2, a.y); a.y = a.y > gy + 0.01 ? Math.max(gy, a.y - 8 * dt) : gy;
     }
+    }
+    a.spd = sp;
     if (!a.g.visible) continue;
     const amp = sp > 0 ? Math.min(0.9, 0.35 + sp * 0.08) : 0, s = Math.sin(a.anim);
     a.legs.forEach((l, k) => { const ph = (a.legs.length === 2 ? k : (k === 0 || k === 3 ? 0 : 1)) * Math.PI; l.rotation.x = Math.sin(a.anim + ph) * amp; });
@@ -3460,7 +3484,8 @@ function drawMap(){
   g.textAlign = 'center'; g.lineJoin = 'round';
   for (const l of mapLabels){ if (Z < l.minZ) continue; const x = tx(l.x), y = tz(l.z); if (x < -80 || x > W + 80 || y < -20 || y > H + 20) continue;
     g.font = 'bold ' + Math.round(l.size * clamp(0.75 + Z * 0.12, 0.8, 1.4)) + 'px sans-serif'; g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 3; g.strokeText(l.t, x, y + 4); g.fillStyle = l.col; g.fillText(l.t, x, y + 4); }
-  for (const h of hordes){
+  const HL = typeof NET !== 'undefined' && NET.on && NET.role === 'join' ? (NET.hd || []).map(q => ({x:q[0], z:q[1], n:q[2]})) : hordes;
+  for (const h of HL){
     const rr = (3 + Math.sqrt(h.n) * 1.3) * Z + 4;
     g.fillStyle = 'rgba(190,40,220,.35)'; g.strokeStyle = '#d070ff'; g.lineWidth = 2; g.beginPath(); g.arc(tx(h.x), tz(h.z), rr, 0, 7); g.fill(); g.stroke();
     g.fillStyle = '#f0c0ff'; g.font = 'bold 13px sans-serif'; g.fillText('HORDA (' + h.n + ')', tx(h.x), tz(h.z) - rr - 4);
@@ -3629,7 +3654,7 @@ function enterCar(v){
   }
   if (v.hp <= 0){ log('Este carro está destruído. Use uma CAIXA DE FERRAMENTAS para consertar.', '#ffb070'); return; }
   if (P.equip && P.aim) P.aim = false;
-  P.car = v; P.pass = false; P.seat = 0; v.occ = true; P.agach = false; P.reload = 0; P.vy = 0; P.climb = null; P.lookHold = 0; P.yaw = v.yaw + Math.PI; P.pitch = -0.12; P.cam = null; P._ly = P.yaw; P._lp = P.pitch;
+  P.car = v; P.pass = false; P.seat = 0; v.occ = true; v.moved = true; P.agach = false; P.reload = 0; P.vy = 0; P.climb = null; P.lookHold = 0; P.yaw = v.yaw + Math.PI; P.pitch = -0.12; P.cam = null; P._ly = P.yaw; P._lp = P.pitch;
   sfx('car_door_open', 0.6) || noiseSnd(0.1, 0.1, 700);
   setTimeout(() => sfx('car_door_close', 0.6), 350);
   if (v.fuel <= 0) log('O carro está sem gasolina. Procure um GALÃO ou um posto.', '#ffd27a');
@@ -3646,7 +3671,7 @@ function exitCar(){
   if (!ok){ log('Não tem espaço para sair do carro aqui.', '#ffd27a'); return; }
   P.x = ok[0]; P.z = ok[1]; P.y = P.ground = ok[2]; P.vy = 0; P.car = null;
   if (P.pass){ P.pass = false; P.seat = 0; sfx('car_door_close', 0.6); P.cam = null; return; }
-  v.occ = false; v.engOn = false;
+  v.occ = false; v.engOn = false; v.moved = true; if (typeof NET !== 'undefined' && NET.on) netSend({t:'vx', v:netVehSig(v)});
   stopEngine(v); sfx('car_door_close', 0.6); P.cam = null;
 }
 function stopEngine(v){ if (v.eng){ try { v.eng.g.gain.setTargetAtTime(0, AC.currentTime, 0.08); const e = v.eng; setTimeout(() => { try { e.src.stop(); } catch(_){} }, 400); } catch(e){} v.eng = null; } }
@@ -4116,7 +4141,7 @@ function update(dt){
   if (spawnT <= 0){
     spawnT = 3; const day = Math.floor(gameMin / 1440);
     let solo = 0; for (const z of zombies) if (!z.horde) solo++;
-    const target = Math.min(MAXZ * CFG.zPop, (isTouch ? 60 : 120) * CFG.zPop + day * 12 + (nightF > .6 ? 12 : 0));
+    const target = Math.min(MAXZ * CFG.zPop, (SMALL ? 60 : 120) * CFG.zPop + day * 12 + (nightF > .6 ? 12 : 0));
     for (let k = 0, nk = solo < target * 0.7 ? 3 : 1; k < nk && solo + k < target && zombies.length < HARDCAP; k++) spawnZombie(40);
     if (CFG.hordesOn && hordes.length < 3 + Math.min(3, day) && Math.random() < 0.06) spawnHorde(Math.max(6, Math.round((day === 0 ? pick([10, 15, 30]) : pick([10, 15, 30, 60])) * Math.min(2, CFG.zPop))), false, 90);
   }
@@ -4188,7 +4213,7 @@ function newGame(seed){
   addItem('taco'); addItem('agua'); addItem('salg');
   gameMin = (CFG.startH === undefined ? 8 : CFG.startH) * 60;
   spawnAnimals();
-  for (let i = 0; i < Math.round((isTouch ? 75 : 165) * CFG.zPop); i++) spawnZombie(28);
+  for (let i = 0; i < Math.round((SMALL ? 75 : 165) * CFG.zPop); i++) spawnZombie(28);
   if (CFG.hordesOn){ const q = n => Math.max(6, Math.round(n * CFG.zPop)); spawnHorde(q(15), false, 55, 85); spawnHorde(q(30), false, 120); if (!isTouch){ spawnHorde(q(10), false, 90); spawnHorde(q(60), false, 170); spawnHorde(q(30), false, 200); } }
   beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 70, 10, 1, true), new THREE.MeshBasicMaterial({color:0x40c0ff, transparent:true, opacity:0.35, depthWrite:false, fog:false, side:THREE.DoubleSide}));
   beacon.visible = false; scene.add(beacon);
@@ -4479,6 +4504,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
+const GAME_VER = '2026.11.05-1';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
@@ -4518,7 +4544,7 @@ function netSend(m){ if (NET.tr){ m.f = NET.id; NET.tr.send(m); } }
 
 function netStart(role, code, name){
   netStop();
-  Object.assign(NET, {on:true, ready:false, role, code, name:name || 'Sobrevivente', id:NET.id || rid(8), hostId:role === 'host' ? null : null, peers:new Map(), hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(), entChanged:new Map(), contChanged:new Map(), contSig:new Map(), sh:0, sw:0, noise:null});
+  Object.assign(NET, {on:true, ready:false, role, code, name:name || 'Sobrevivente', id:NET.id || rid(8), hostId:role === 'host' ? null : null, peers:new Map(), hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(), entChanged:new Map(), contChanged:new Map(), contSig:new Map(), sh:0, sw:0, noise:null, ahits:[], ra:new Map(), hd:[], aid:0});
   if (role === 'host') NET.hostId = NET.id;
   NET.tr = netTransport('zm-' + code.toLowerCase(), netOnMsg, st => { NET.conn = st; netHud(); });
   addEventListener('beforeunload', () => netSend({t:'bye'}));
@@ -4531,17 +4557,23 @@ function netOnMsg(m){
   if (!m || m.f === NET.id || !NET.on) return;
   if (m.to && m.to !== NET.id) return;
   const t = m.t;
-  if (t === 'hi'){ if (NET.role === 'host' && NET.ready) netWelcome(m.f); return; }
+  if (t === 'hi'){ if (NET.role === 'host' && NET.ready){ netWelcome(m.f); if (m.ver !== GAME_VER) log((m.n || 'Um amigo') + ' está com outra versão do jogo. Se o mapa ficar diferente, peça para ele fechar e abrir o jogo de novo.', '#ffd27a'); } return; }
   if (t === 'wel'){ if (NET.role === 'join' && !NET.ready && !NET.joining) netJoinWorld(m); return; }
   if (t === 'o'){ if (NET.role === 'join' && (!NET.hostId || m.f === NET.hostId)) netApplyOpts(m.o, true); return; }
   if (t === 'bye'){ const p = NET.peers.get(m.f); if (p) netPeerGone(p); return; }
   if (!NET.ready) return;
   if (t === 'p') return netOnState(m);
-  if (t === 'h'){ if (NET.role === 'host') netApplyHits(m.f, m.h, m.s, m.v); return; }
+  if (t === 'h'){ if (NET.role === 'host'){ netApplyHits(m.f, m.h, m.s, m.v); const pp = NET.peers.get(m.f); for (const [nid, dm] of m.a || []){ const an = animals.find(q => q.nid === nid); if (an) hitAnimal(an, dm, pp ? pp.proxy : {x:an.x, z:an.z}); } } return; }
   if (t === 'dm') return netOnDamage(m);
   if (t === 'e') return netApplyEnts(m.e);
   if (t === 'c') return netApplyConts(m.c);
+  if (t === 'vx') return netApplyVeh(m.v);
+  if (t === 'ad') return netAnimalBite(m);
 }
+// ---------- carros iguais para todos ----------
+function netVehSig(v){ return [VEH.indexOf(v), r2(v.x), r2(v.y), r2(v.z), r2(v.yaw), Math.round(v.fuel), Math.round(v.hp)]; }
+function netVehMoved(){ return VEH.filter(v => v.moved).map(netVehSig); }
+function netApplyVeh(q){ const v = VEH[q[0]]; if (!v || v === P.car && !P.pass) return; v.x = q[1]; v.y = q[2]; v.z = q[3]; v.yaw = q[4]; v.fuel = q[5]; v.hp = q[6]; v.spd = 0; v.moved = true; v.g.position.set(v.x, v.y, v.z); v.g.rotation.set(-(v.pitch || 0), v.yaw, 0); }
 function netRoomOpts(){ const o = {}; for (const k of ROOM_KEYS) o[k] = CFG[k]; return o; }
 function netApplyOpts(o, say){
   if (!o) return; if (!NET.myRoom){ NET.myRoom = {}; for (const k of ROOM_KEYS) NET.myRoom[k] = CFG[k]; }
@@ -4550,10 +4582,16 @@ function netApplyOpts(o, say){
   if (ch && panel === 'cfg' && cfgTab === ROOM_TAB) renderCfg();
 }
 function netWelcome(to){
-  netSend({t:'wel', to, o:netRoomOpts(), seed:NET.seed, map:SMALL ? 'p' : 'g', gm:gameMin, x:r2(P.x), y:r2(P.y), z:r2(P.z), rn:rainOn ? 1 : 0,
+  netSend({t:'wel', to, ver:GAME_VER, vm:netVehMoved(), o:netRoomOpts(), seed:NET.seed, map:SMALL ? 'p' : 'g', gm:gameMin, x:r2(P.x), y:r2(P.y), z:r2(P.z), rn:rainOn ? 1 : 0,
     e:[...NET.entChanged.entries()].map(([i, v]) => [i, v[0], v[1]]), c:[...NET.contChanged.entries()].map(([i, v]) => [i, v[0], v[1]])});
 }
 function netJoinWorld(w){
+  if (w.ver !== GAME_VER){   // versões diferentes geram cidades e carros diferentes: atualiza para a versão do site
+    const u = new URL(location.href), tried = u.searchParams.get('vtry') === '1';
+    if (!tried || (w.ver || '') > GAME_VER){ u.searchParams.set('sala', NET.code); u.searchParams.set('nome', NET.name); u.searchParams.set('auto', '1'); u.searchParams.set('vtry', '1'); u.searchParams.set('t', Date.now());
+      mpMsg('Atualizando o jogo para a mesma versão do anfitrião...'); location.href = u.toString(); return; }
+    netStop(); mpMsg('O anfitrião está com uma versão antiga do jogo. Peça para ele fechar o jogo e abrir de novo (ou recarregar a página).'); return;
+  }
   const myMap = SMALL ? 'p' : 'g';
   if (w.map !== myMap){   // o tamanho do mapa vem do anfitrião: recarrega no mesmo tamanho e entra sozinho de novo
     const u = new URL(location.href); u.searchParams.set('sala', NET.code); u.searchParams.set('mapa', w.map); u.searchParams.set('nome', NET.name); u.searchParams.set('auto', '1');
@@ -4568,7 +4606,8 @@ function netJoinWorld(w){
     const a = RNDT() * 6.28; P.x = w.x + Math.cos(a) * 1.6; P.z = w.z + Math.sin(a) * 1.6; P.y = groundAt(P.x, P.z, 0.3, w.y + 1.5); P.ground = P.y;
     if (hitAny(P.x, P.z, 0.35, P.y + 0.05)){ P.x = w.x; P.z = w.z; P.y = w.y; P.ground = P.y; }
     gameMin = w.gm; rainOn = !!w.rn;
-    netInitTracking(); netApplyEnts(w.e || []); netApplyConts(w.c || []);
+    netInitTracking(); netApplyEnts(w.e || []); netApplyConts(w.c || []); for (const q of w.vm || []) netApplyVeh(q);
+    for (const a of animals) scene.remove(a.g); animals.length = 0;   // os animais vêm do anfitrião
     NET.ready = true; NET.joining = false; start(); netHud();
     log('Você entrou na sala ' + NET.code + '. Os zumbis são os mesmos para todos!', '#9fd4ff');
   }, 40);
@@ -4587,6 +4626,7 @@ function netMyState(){
   if (NET.noise){ m.nz = [r2(NET.noise[0]), r2(NET.noise[1]), r2(NET.noise[2])]; NET.noise = null; }
   if (NET.role === 'host'){
     m.h = 1; m.gm = Math.round(gameMin * 10) / 10; m.rn = rainOn ? 1 : 0; m.rk = r2(rainK);
+    m.hd = hordes.map(h => [Math.round(h.x), Math.round(h.z), h.n]); m.an = netAnimalSnap();
     m.zs = netZombieSnap(); const now = performance.now();
     NET.deaths = NET.deaths.filter(d => now - d.t < 2500);
     if (NET.deaths.length) m.d = NET.deaths.map(d => [d.nid, r2(d.dx), r2(d.dz), d.o ? (d.o.head ? 1 : 0) | (d.o.crumple ? 2 : 0) : 0, d.k]);
@@ -4620,7 +4660,24 @@ function netOnState(m){
   if (NET.role === 'host' && m.nz){ NET.applying = true; try { _emitNoise(m.nz[0], m.nz[1], m.nz[2]); } finally { NET.applying = false; } }
   netHud();
 }
+const ATYPES = Object.keys(ANIM);
+function netAnimalSnap(){
+  const out = [], ps = [...NET.peers.values()].filter(p => p.st);
+  for (const a of animals){ if (a.dead && a.deadT > 40) continue; if (!ps.some(p => Math.abs(p.proxy.x - a.x) < NET_ZR && Math.abs(p.proxy.z - a.z) < NET_ZR)) continue;
+    if (!a.nid) a.nid = ++NET.aid; const sp = a.spd || 0; out.push(a.nid, ATYPES.indexOf(a.type), r2(a.x), r2(a.z), r2(a.yaw), (sp > 0.1 ? 1 : 0) | (sp > 3 ? 2 : 0) | (a.dead ? 4 : 0)); }
+  return out;
+}
+function netApplyAnimals(an){
+  if (!an) return; const now = performance.now();
+  for (let i = 0; i + 5 < an.length; i += 6){
+    const nid = an[i]; let a = NET.ra.get(nid);
+    if (!a){ const t = ATYPES[an[i + 1]]; if (!t) continue; a = makeAnimal(t, an[i + 2], an[i + 3], null); a.rep = true; a.nid = nid; a.yaw = an[i + 4]; a.state = 'rep'; NET.ra.set(nid, a); }
+    a.net = {x:an[i + 2], z:an[i + 3], yaw:an[i + 4], fl:an[i + 5], t:now};
+  }
+  for (const [nid, a] of NET.ra) if (now - a.net.t > 4000){ scene.remove(a.g); const k = animals.indexOf(a); if (k >= 0) animals.splice(k, 1); if (a.cont){ const ci = containers.indexOf(a.cont); if (ci >= 0) containers.splice(ci, 1); } NET.ra.delete(nid); }
+}
 function netFromHost(m){
+  NET.hd = m.hd || NET.hd; netApplyAnimals(m.an);
   if (Math.abs(gameMin - m.gm) > 3) gameMin = m.gm; else gameMin += (m.gm - gameMin) * 0.2;
   rainOn = !!m.rn; rainT = 1e9; rainK += ((m.rk || 0) - rainK) * 0.3;
   // mortes primeiro (para não recriar quem morreu)
@@ -4744,7 +4801,7 @@ function netPeerGone(p){
   netDropModel(p); NET.peers.delete(p.id); log('🚪 ' + p.name + ' saiu da sala.', '#c9c0a8');
   if (NET.role === 'join' && p.id === NET.hostId){
     // anfitrião saiu: os zumbis que você vê passam a ser seus
-    NET.role = 'solo'; for (const z of NET.rz.values()){ z.rep = false; z.state = 'wander'; z.wT = 1; z.nid = 0; } NET.rz.clear();
+    NET.role = 'solo'; for (const a of animals){ a.rep = false; if (a.state === 'rep') a.state = 'idle'; } for (const z of NET.rz.values()){ z.rep = false; z.state = 'wander'; z.wT = 1; z.nid = 0; } NET.rz.clear();
     log('O anfitrião saiu. Você continua jogando sozinho nesta cidade.', '#ffd27a');
   }
   netHud();
@@ -4775,12 +4832,14 @@ function netDrawPeers(dt){
     p.swing = Math.max(0, p.swing - dt * (rp.equip && ITEMS[rp.equip.id].fogo ? 6 : 1.6)); p.muz -= dt; rp.recoil = Math.max(0, rp.recoil - dt * 7);
     // carro do amigo
     if (s.car && s.car[0] >= 0 && VEH[s.car[0]]){
-      const v = VEH[s.car[0]]; if (p.carV && p.carV !== v) p.carV.occ = false; p.carV = v; v.occ = true; v.spd = 0;
+      const v = VEH[s.car[0]]; if (p.carV && p.carV !== v) p.carV.occ = false; p.carV = v; v.occ = true; v.moved = true;
+      if (P.car === v && !P.pass){ if (NET.id > p.id){ const t = seatsTaken(v), seat = [1, 2, 3].find(k => !t.has(k)) || 1; stopEngine(v); P.pass = true; P.seat = seat; log('Outra pessoa já estava dirigindo: você foi para o banco do carona.', '#ffd27a'); } else { /* eu fico no volante; o outro vira carona do lado dele */ } }
+      if (P.car === v && !P.pass){ /* sigo dirigindo */ } else { v.spd = 0;
       const c = s.car, kk = Math.min(1, dt * 10);
       if (Math.hypot(c[1] - v.x, c[3] - v.z) > 8){ v.x = c[1]; v.z = c[3]; v.y = c[2]; } else { v.x += (c[1] - v.x) * kk; v.y += (c[2] - v.y) * kk; v.z += (c[3] - v.z) * kk; }
       v.yaw = lerpAng(v.yaw, c[4], kk); v.pitch = c[5]; v.g.position.set(v.x, v.y, v.z); v.g.rotation.set(-v.pitch, v.yaw, 0);
       v.spin += c[6] * dt / 0.36; for (const wh of v.wheels) wh.sp.rotation.x = v.spin; v.rspd = Math.abs(c[6]); v.steer = 0;
-      rp.car = v; rp.seat = 0; rp.pass = false;
+      rp.car = v; rp.seat = 0; rp.pass = false; }
     } else {
       if (p.carV){ p.carV.occ = false; p.carV = null; }
       if (s.rd && VEH[s.rd[0]]){ rp.car = VEH[s.rd[0]]; rp.seat = s.rd[1]; rp.pass = true; } else { rp.car = null; rp.pass = false; }
@@ -4801,13 +4860,13 @@ function netTick(dt){
   if (!NET.on || !NET.ready) return;
   netDrawPeers(dt);
   // tiros/golpes do amigo vão ao anfitrião assim que acontecem
-  if (NET.role === 'join' && (NET.hits.length || NET.sevs.length || NET.svs.length)){ netSend({t:'h', to:NET.hostId, h:NET.hits, s:NET.sevs, v:NET.svs}); NET.hits = []; NET.sevs = []; NET.svs = []; }
+  if (NET.role === 'join' && (NET.hits.length || NET.sevs.length || NET.svs.length || NET.ahits.length)){ netSend({t:'h', to:NET.hostId, h:NET.hits, s:NET.sevs, v:NET.svs, a:NET.ahits}); NET.hits = []; NET.sevs = []; NET.svs = []; NET.ahits = []; }
   if (NET.role === 'host') for (const z of zombies){ const lx = z.nlx === undefined ? z.x : z.nlx, lz = z.nlz === undefined ? z.z : z.nlz; z.netSpd = (z.netSpd || 0) * 0.8 + Math.hypot(z.x - lx, z.z - lz) / Math.max(dt, 1e-3) * 0.2; z.nlx = z.x; z.nlz = z.z; }
   NET.sendT -= dt; if (NET.sendT <= 0){ NET.sendT = NET_RATE; netSend(netMyState()); }
   if (NET.role === 'host' && (NET.optT = (NET.optT || 0) - dt) <= 0){ NET.optT = 8; netSend({t:'o', o:netRoomOpts()}); }
   NET.entT -= dt; if (NET.entT <= 0){ NET.entT = 0.25; netScanEnts(); }
   NET.contT -= dt; if (NET.contT <= 0){ NET.contT = 0.5; netScanConts(); }
-  if (NET.role === 'join' && NET.hostId && performance.now() - NET.lastHost > 9000){ const h = NET.peers.get(NET.hostId); if (h) netPeerGone(h); else { NET.role = 'solo'; for (const z of NET.rz.values()){ z.rep = false; z.nid = 0; } NET.rz.clear(); } }
+  if (NET.role === 'join' && NET.hostId && performance.now() - NET.lastHost > 9000){ const h = NET.peers.get(NET.hostId); if (h) netPeerGone(h); else { NET.role = 'solo'; for (const a of animals){ a.rep = false; if (a.state === 'rep') a.state = 'idle'; } for (const z of NET.rz.values()){ z.rep = false; z.nid = 0; } NET.rz.clear(); } }
   NET.hudT = (NET.hudT || 0) - dt; if (NET.hudT <= 0){ NET.hudT = 1; netHud(); }
 }
 // morto no multijogador: o mundo continua (os zumbis do anfitrião não param)
@@ -4894,7 +4953,7 @@ function mpJoin(codeArg){
   const ask = () => {
     if (!NET.on || NET.ready || NET.joining || NET.role !== 'join') return;
     if (performance.now() - NET.waitT > 25000){ mpMsg('Não achei a sala ' + code + '. Confira o código e se quem criou está com o jogo aberto.', true); netStop(); return; }
-    netSend({t:'hi', n:name}); setTimeout(ask, 1500);
+    netSend({t:'hi', n:name, ver:GAME_VER}); setTimeout(ask, 1500);
   };
   setTimeout(ask, 400);
 }
