@@ -328,7 +328,7 @@ let beam = null, beamTex = null, SILG = null, SILM = null, hemi, sun, flash, muz
 let mouseDown = false, locked = false, spawnHouse = null;
 const keys = {};
 const touch = {aim:false, joy:null, jx:0, jy:0, mx:0, mz:0, look:null, lx:0, ly:0, atk:false, run:false};
-const MAXZ = SMALL ? 80 : 160, HARDCAP = SMALL ? 190 : 520;
+const MAXZ = SMALL ? 80 : 160, HARDCAP = SMALL ? 260 : 560;
 const TOWN = SMALL ? 210 : 320, FOREST_X = TOWN + 2, WX2 = TOWN + 225, WX1 = -WX2;
 const NB = -TOWN - 40, SB = TOWN + 40, WZ1 = NB - (SMALL ? 115 : 160), WZ2 = SB + (SMALL ? 140 : 220), HWY_N = -TOWN - 24, HWY_S = TOWN + 24;
 let flats = [], SEEDX = 0, SEEDZ = 0;
@@ -1122,6 +1122,7 @@ function buildCar(x, z, alongZ){
   PROPCARS.push({x, z, y:0, alongZ, ci:containers.length - 1, flip:Math.random() < 0.5, col:pick(CARCOL), fuel:Math.round(R(0, 35)), hp:Math.round(R(25, 90))});
 }
 function spawnPropCars(){
+  PROPCARS = PROPCARS.filter(p => !onRail(p.x, p.z, 2.5));
   for (const w of WRECKS){ const v = addVehicle(w.x, w.z, w.yaw, {col:w.col, fuel:0, hp:0, y:0}); v.wreck = true; }
   // nem todo carro de enfeite vira carro (pesaria no celular); os que sobram somem junto com o porta-malas
   const keep = SMALL ? 55 : 110, rate = Math.min(1, keep / Math.max(1, PROPCARS.length));
@@ -1161,14 +1162,14 @@ function buildBosque(bx, bz){
 }
 // ---- rodovias ----
 function buildHighway(zc, sg){
-  const L = 40, conn = [-120, 0, 120].filter(x => x > -TOWN && x < TOWN);
+  const L = 40, conn = [-120, 0, 120].filter(x => x > -TOWN && x < TOWN).concat([FOREST_X + 60, -(FOREST_X + 60)]);
   for (let x = WX1 + L / 2; x < WX2; x += L){
     pushGeo(chunkOf(x, zc), GB5, x, 0.012, zc, L + 0.2, 0.024, 13, 0x434347, 0, 0, 0);
     for (let q = x - L / 2 + 3; q < x + L / 2; q += 7){ pushGeo(chunkOf(q, zc), GB5, q, 0.03, zc - 3.2, 3, 0.01, 0.15, 0xe8e8e0, 0, 0, 0); pushGeo(chunkOf(q, zc), GB5, q, 0.03, zc + 3.2, 3, 0.01, 0.15, 0xe8e8e0, 0, 0, 0); }
     pushGeo(chunkOf(x, zc), GB5, x, 0.03, zc - 0.12, L, 0.01, 0.1, 0xd8b830, 0, 0, 0); pushGeo(chunkOf(x, zc), GB5, x, 0.03, zc + 0.12, L, 0.01, 0.1, 0xd8b830, 0, 0, 0);
     for (const side of [-1, 1]){
       const gz = zc + side * 6.9;
-      if (conn.some(c => Math.abs(c - x) < L / 2 + 6) && side === -sg){
+      if (conn.some(c => Math.abs(c - x) < L / 2 + 6) && (side === -sg || Math.abs(Math.abs(x) - (FOREST_X + 60)) < L)){
         for (const [a, b] of [[x - L / 2, x + L / 2]]){ let s0 = a; for (const c of conn){ if (c > a - 6 && c < b + 6){ if (c - 6 > s0) boxZ(s0, c - 6, 0.35, 0.75, gz - 0.06, gz + 0.06, 0x9aa0a6, true); s0 = c + 6; } } if (b > s0) boxZ(s0, b, 0.35, 0.75, gz - 0.06, gz + 0.06, 0x9aa0a6, true); }
       } else boxZ(x - L / 2, x + L / 2, 0.35, 0.75, gz - 0.06, gz + 0.06, 0x9aa0a6, true);
       if (Math.abs(x % 80) < 1) S(GB, x, 0.3, gz, 0.12, 0.6, 0.12, 0x6a6a6a);
@@ -1176,7 +1177,7 @@ function buildHighway(zc, sg){
     roadSegs.push({x1:x - L / 2, x2:x + L / 2, z1:zc - 6.5, z2:zc + 6.5});
   }
   for (let i = 0; i < (SMALL ? 18 : 30); i++){ const x = R(WX1 + 10, WX2 - 10); if (conn.some(c => Math.abs(c - x) < 8)) continue; buildCar(x, zc + pick([-4.5, -1.6, 1.6, 4.5]), false); }
-  for (let j = 0; j < 2; j++){ const x0 = R(WX1 + 40, WX2 - 40); for (let k = 0; k < 5; k++) buildCar(x0 + k * 4.6 + R(-0.5, 0.5), zc + pick([-4.5, -1.6, 1.6, 4.5]), false); }
+  for (let j = 0; j < 2; j++){ const x0 = R(WX1 + 40, WX2 - 40); for (let k = 0; k < 5; k++){ const x = x0 + k * 4.6 + R(-0.5, 0.5); if (Math.abs(Math.abs(x) - (FOREST_X + 60)) > 5) buildCar(x, zc + pick([-4.5, -1.6, 1.6, 4.5]), false); } }
   makeSign('RODOVIA ' + (sg < 0 ? 'BR-101 NORTE' : 'BR-101 SUL'), 0x1f6a3a, 20, 4.2, zc - sg * 7.4, 6, sg < 0 ? 0 : Math.PI);
   S(GB, 17.2, 2.0, zc - sg * 7.4, 0.15, 4, 0.15, 0x6a6a6a); S(GB, 22.8, 2.0, zc - sg * 7.4, 0.15, 4, 0.15, 0x6a6a6a);
 }
@@ -2027,7 +2028,7 @@ function buildRails(){
   }
   // passagens de nível (placa em X) onde a linha cruza estradas
   const cross = (x, z, ry) => { S(GB, x, 1.6, z, 0.12, 3.2, 0.12, 0x6a6a6a); S(GB, x, 3.0, z, 1.3, 0.2, 0.05, 0xf0f0f0, ry, 0.8); S(GB, x, 3.0, z, 1.3, 0.2, 0.05, 0xd02020, ry, -0.8); };
-  for (const sg of [-1, 1]){ if (sg < 0){ cross(sg * RX + 3, 3.5, 0); cross(sg * RX - 3, -3.5, 0); } }
+  for (const sg of [-1, 1]){ if (sg < 0){ cross(sg * RX + 3, 3.5, 0); cross(sg * RX - 3, -3.5, 0); } for (const zc of [HWY_N, HWY_S]){ cross(sg * RX + 3, zc + 8, 0); cross(sg * RX - 3, zc - 8, 0); } }
   // estações
   const station = (x, z, alongX, nm, side) => {
     const L = 34, W = 3.2, px = alongX ? x : x + side * 3.6, pz = alongX ? z + side * 3.6 : z, y0 = terrainAt(px, pz);
@@ -2060,12 +2061,12 @@ function buildRails(){
   { const x = SMALL ? -150 : -210, z = HWY_S;
     for (const o of [-5.4, -2.1, 2.1, 5.4]) if (Math.abs(o) > 3) addBox(x, 0.55, z + o, 1.1, 1.1, 2.6, 0x8a7a5a, true); else addBox(x + 6, 0.55, z + o, 1.1, 1.1, 2.6, 0x8a7a5a, true);
     for (let k = -1; k <= 1; k++) addBox(x - 6, 0.45, z + k * 3.2, 0.6, 0.9, 2.6, 0x9a9a92, true);
-    addBox(x + 14, 1.5, z + 10.5, 6, 3, 4, 0x4a5a3a, true); addBox(x + 14, 3.15, z + 10.5, 6.4, 0.3, 4.4, 0x3a4a2a, false);
-    addBox(x - 12, 1.3, z + 10.2, 7.5, 2.6, 2.6, 0x4a5a3a, true); addBox(x - 16.6, 1.1, z + 10.2, 2.2, 2.2, 2.4, 0x3e4e32, true);
-    for (const [cx, cz] of [[x + 13, z + 8], [x + 16, z + 12.6], [x - 12, z + 11.8]]) addContainer(cx, cz, 'militar', 2.2);
+    addBox(x + 14, 1.5, z - 10.5, 6, 3, 4, 0x4a5a3a, true); addBox(x + 14, 3.15, z - 10.5, 6.4, 0.3, 4.4, 0x3a4a2a, false);
+    addBox(x - 12, 1.3, z - 10.2, 7.5, 2.6, 2.6, 0x4a5a3a, true); addBox(x - 16.6, 1.1, z - 10.2, 2.2, 2.2, 2.4, 0x3e4e32, true);
+    for (const [cx, cz] of [[x + 13, z - 8], [x + 16, z - 12.6], [x - 12, z - 11.8]]) addContainer(cx, cz, 'militar', 2.2);
     makeSign('BARREIRA MILITAR - ÁREA ISOLADA', 0x4a5a3a, x + 6, 2.4, z - 7.6, 6.5, 0);
     for (let i = 0; i < 7; i++) remains(x + R(-14, 14), z + R(-5, 5), RI(3, 6), 0.03);
-    RUINS.push({x, z:z + 14, nm:'BARREIRA MILITAR'});
+    RUINS.push({x, z:z - 14, nm:'BARREIRA MILITAR'});
   }
   // engavetamento na rodovia norte (carros queimados)
   { const x = R(-60, 60), z = HWY_N;
@@ -2146,10 +2147,15 @@ function updateTrain(dt){
 }
 function trainHorn(){ const c = TRAIN.cars[0], d = Math.hypot(c.x - P.x, c.z - P.z); if (d > 260) return; const v = Math.max(0.05, 0.35 * (1 - d / 260)); toneSnd(311, 311, 1.1, v, 'sawtooth'); toneSnd(370, 370, 1.1, v * 0.8, 'sawtooth'); }
 // quem está em cima de um vagão anda junto com ele
-function carryOnTrain(o){
-  const c = trainCarAt(o.x, o.z, 0.05); if (!c || Math.abs(o.y - (c.y + c.top)) > 0.3) return false;
-  const dyaw = c.yaw - c.pyaw, dx0 = o.x - c.px, dz0 = o.z - c.pz, cs = Math.cos(-dyaw), sn = Math.sin(-dyaw);
-  o.x = c.x + dx0 * cs - dz0 * sn; o.z = c.z + dx0 * sn + dz0 * cs; if (o === P) P.yaw += dyaw; return true;
+function carryOnTrain(o, dt){
+  const c = trainCarAt(o.x, o.z, 0.05);
+  if (!c || Math.abs(o.y - (c.y + c.top)) > 0.3){
+    // no ar (pulou do vagão): segue com o embalo do trem, perdendo um pouco
+    if (o.tv && o.y > (o.ground || 0) + 0.05 && dt){ o.x += o.tv[0] * dt; o.z += o.tv[1] * dt; o.tv[0] *= 1 - 0.25 * dt; o.tv[1] *= 1 - 0.25 * dt; return false; }
+    o.tv = null; return false; }
+  const dyaw = c.yaw - c.pyaw, dx0 = o.x - c.px, dz0 = o.z - c.pz, cs = Math.cos(-dyaw), sn = Math.sin(-dyaw), ox = o.x, oz = o.z;
+  o.x = c.x + dx0 * cs - dz0 * sn; o.z = c.z + dx0 * sn + dz0 * cs; if (o === P) P.yaw += dyaw;
+  if (dt) o.tv = [(o.x - ox) / dt, (o.z - oz) / dt]; return true;
 }
 // ================= MATINHO (tufos finos da altura da canela) =================
 let GRASS = [];
@@ -2238,11 +2244,20 @@ function dangerAt(x, z){
   return Math.min(3, lv + (day >= 3 && lv < 3 && thash(i, day, 99) < 0.3 ? 1 : 0));
 }
 let LOC = {main:'', t:0, day:-1};
+function trainInfo(){
+  if (!TRAIN) return ''; const T = TRAIN, L = T.path.L, on = !!trainCarAt(P.x, P.z, 0.1) && P.y > 0.9, near = Math.hypot(T.cars[0].x - P.x, T.cars[0].z - P.z) < 60;
+  if (!on && !near && !RUINS.some(r => r.nm.indexOf('ESTA') === 0 || r.nm === 'PARADA OESTE' ? Math.hypot(r.x - P.x, r.z - P.z) < 30 : false)) return '';
+  let best = 1e9, bi = 0; T.sts.forEach((q, i) => { const d = ((q + T.cars[0].L / 2 - T.s) % L + L) % L; if (d < best){ best = d; bi = i; } });
+  const nm = ['Estação Central', 'Estação da Serra', 'Parada Oeste'], st = RUINS.filter(r => r.nm === 'ESTAÇÃO CENTRAL' || r.nm === 'ESTAÇÃO DA SERRA' || r.nm === 'PARADA OESTE');
+  let sn = ''; { const q = trainAt(T.sts[bi]); let bd = 1e9; for (const r of st){ const d = Math.hypot(r.x - q.x, r.z - q.z); if (d < bd){ bd = d; sn = r.nm.toLowerCase().replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase()).replace('Da ', 'da '); } } }
+  if (T.stop > 0) return '🚆 Trem parado' + (on ? '' : ' na estação') + ' · sai em ' + Math.ceil(T.stop) + ' s';
+  return '🚆 Próxima parada: ' + sn + ' · ~' + Math.max(1, Math.round(best / Math.max(4, T.v || 12))) + ' s';
+}
 function updateLocation(dt){
   LOC.t -= dt; if (LOC.t > 0) return; LOC.t = 0.5;
   const p = placeName(P.x, P.z), ri = REDGES.length ? roadInfo(P.x, P.z, 5) : null, rua = ri && ri.d < 2.5 && ri.e && ri.e.nome ? ri.e.nome : '';
   const lv = dangerAt(P.x, P.z), cor = ['#9fe09a', '#ffd27a', '#ff9a6a', '#ff5a4a'][lv];
-  const el = $('#loc'); if (el) el.innerHTML = '📍 ' + p.main + (rua ? '<br><span>' + rua + '</span>' : '') + '<br><b style="color:' + cor + '">Perigo: ' + DANGER[lv] + '</b>';
+  const ti = trainInfo(); const el = $('#loc'); if (el) el.innerHTML = '📍 ' + p.main + (rua ? '<br><span>' + rua + '</span>' : '') + '<br><b style="color:' + cor + '">Perigo: ' + DANGER[lv] + '</b>' + (ti ? '<br><span style="color:#ffd23a">' + ti + '</span>' : '');
   const day = Math.floor(gameMin / 1440); if (LOC.day >= 0 && day !== LOC.day) log('Um novo dia: os infectados se espalharam e o perigo dos lugares mudou.', '#ffb070'); LOC.day = day;
   if (p.main !== LOC.main || lv !== LOC.lv){ const first = !LOC.main, nm = p.main !== LOC.main; LOC.main = p.main; LOC.lv = lv; if (!first && (nm || lv >= 2)){ const b = $('#locB'); b.innerHTML = p.main + '<small style="color:' + cor + '">' + (lv >= 3 ? 'Infestado: muitos infectados por aqui!' : lv === 2 ? 'Perigoso: cuidado' : lv === 1 ? 'Perigo médio' : 'Parece calmo...') + '</small>'; b.classList.remove('on'); void b.offsetWidth; b.classList.add('on'); } }
 }
@@ -2703,15 +2718,16 @@ function nearCook(){ return cookSpots.some(c => Math.abs(c.y - P.y) < 1.3 && Mat
 // ---- hordas ----
 let hordes = [], screamT = 0, hordeDay = -1, zStepT = 0;
 const HTYPES = ['misto', 'rapidos', 'lentos'];
-function spawnHorde(n, aggro, minD, maxD, ht){
-  ht = ht || pick(HTYPES);
+function spawnHorde(n, aggro, minD, maxD, ht, where){
+  ht = ht || pick(HTYPES); where = where || (Math.random() < 0.3 ? 'floresta' : 'cidade');
   minD = minD || (aggro ? 60 : 80); maxD = maxD || (aggro ? 130 : 9999);
-  if (isTouch) n = Math.min(n, 50);
+  if (isTouch) n = Math.min(n, 100);
   if (zombies.length + n > HARDCAP) n = Math.max(0, HARDCAP - zombies.length); if (n < 6) return null;
   let p = null;
+  if (where === 'floresta') for (let k = 0; k < 80 && !p; k++){ const x = (Math.random() < 0.5 ? -1 : 1) * R(FOREST_X + 15, WX2 - 15), z = R(NB + 15, SB - 15); if (Math.hypot(x - P.x, z - P.z) < minD || Math.hypot(x - P.x, z - P.z) > maxD || (typeof onRail === 'function' && onRail(x, z, 6)) || hitAny(x, z, 0.6)) continue; p = [x, z]; }
   for (let k = 0; k < 80 && !p; k++){ const q = randomOutdoor(minD); if (q && !inForest(q[0]) && Math.abs(q[1]) < TOWN && Math.hypot(q[0] - P.x, q[1] - P.z) <= maxD) p = q; }
   if (!p) return null;
-  const h = {x:p[0], z:p[1], tx:p[0], tz:p[1], t:0, aggro, n:0, size:n, warned:false, type:ht}, spread = 3 + Math.sqrt(n) * 1.3;
+  const h = {x:p[0], z:p[1], tx:p[0], tz:p[1], t:0, aggro, n:0, size:n, warned:false, type:ht, where}, spread = 3 + Math.sqrt(n) * 1.3;
   for (let i = 0, made = 0; i < n * 3 && made < n; i++){
     const x = p[0] + R(-spread, spread), z = p[1] + R(-spread, spread); if (hitAny(x, z, 0.35) || inHouse(x, z, 0.5)) continue;
     const zz = makeZombie(x, z, ht === 'rapidos' || (ht === 'misto' && Math.random() < 0.4) ? 'runner' : undefined); zz.horde = h; zz.hox = x - p[0]; zz.hoz = z - p[1]; h.n++; made++;
@@ -2728,6 +2744,7 @@ function updateHordes(dt){
       h.t = R(12, 20);
       const d = Math.hypot(P.x - h.x, P.z - h.z);
       if (h.aggro || (nightF > 0.6 && d < 120)){ h.tx = P.x + R(-8, 8); h.tz = P.z + R(-8, 8); }
+      else if (h.where === 'floresta'){ const sg = h.x > 0 ? 1 : -1, ax = Math.abs(h.x); h.tx = sg * clamp(ax + R(-50, 50), FOREST_X + 12, WX2 - 12); h.tz = clamp(h.z + R(-50, 50), NB + 12, SB - 12); }
       else { h.tx = clamp(h.x + R(-50, 50), -TOWN + 5, TOWN - 5); h.tz = clamp(h.z + R(-50, 50), -TOWN + 5, TOWN - 5); }
     }
     if (!h.warned && Math.hypot(P.x - h.x, P.z - h.z) < 75){ h.warned = true; log('⚠ Uma HORDA de ' + h.n + ' zumbis está por perto! (veja no mapa)', '#e0a0ff'); for (let i = 0; i < 3; i++) setTimeout(() => sfx('zgroan', 0.35, h.x, h.z, R(0.6, 0.75), 120) || toneSnd(R(70, 100), R(45, 60), 2, 0.08), i * 300); }
@@ -3961,6 +3978,8 @@ function drawMap(){
   g.textAlign = 'center'; g.lineJoin = 'round';
   for (const l of mapLabels){ if (Z < l.minZ) continue; const x = tx(l.x), y = tz(l.z); if (x < -80 || x > W + 80 || y < -20 || y > H + 20) continue;
     g.font = 'bold ' + Math.round(l.size * clamp(0.75 + Z * 0.12, 0.8, 1.4)) + 'px sans-serif'; g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 3; g.strokeText(l.t, x, y + 4); g.fillStyle = l.col; g.fillText(l.t, x, y + 4); }
+  if (TRAIN){ g.strokeStyle = 'rgba(255,210,58,.55)'; g.lineWidth = 3; g.setLineDash([10, 6]); g.beginPath(); for (let s0 = 0; s0 <= TRAIN.path.L; s0 += 8){ const q = trainAt(s0); s0 ? g.lineTo(tx(q.x), tz(q.z)) : g.moveTo(tx(q.x), tz(q.z)); } g.closePath(); g.stroke(); g.setLineDash([]);
+    for (const st of TRAIN.sts){ const q = trainAt(st); g.fillStyle = '#ffd23a'; g.fillRect(tx(q.x) - 5, tz(q.z) - 5, 10, 10); g.fillStyle = '#fff3c0'; g.font = 'bold 11px sans-serif'; g.fillText('🚉 parada', tx(q.x), tz(q.z) + 18); } }
   if (TRAIN){ const c = TRAIN.cars[0]; g.fillStyle = '#ffd23a'; g.strokeStyle = '#000'; g.lineWidth = 2; g.beginPath(); g.arc(tx(c.x), tz(c.z), 7, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#ffe9a0'; g.font = 'bold 12px sans-serif'; g.fillText(TRAIN.stop > 0 ? 'TREM (parado na estação)' : 'TREM', tx(c.x), tz(c.z) - 11); }
   if (Z > 0.5) for (const d of DISTRICTS){ const lv = dangerAt(d.x, d.z); g.font = 'bold 11px sans-serif'; g.strokeStyle = 'rgba(0,0,0,.8)'; g.lineWidth = 3; const t = 'perigo: ' + DANGER[lv]; g.strokeText(t, tx(d.x), tz(d.z) + 18); g.fillStyle = ['#9fe09a', '#ffd27a', '#ff9a6a', '#ff5a4a'][lv]; g.fillText(t, tx(d.x), tz(d.z) + 18); }
   const HL = typeof NET !== 'undefined' && NET.on && NET.role === 'join' ? (NET.hd || []).map(q => ({x:q[0], z:q[1], n:q[2], type:q[3]})) : hordes;
@@ -4517,7 +4536,7 @@ function tickClock(dt){
 }
 function update(dt){
   tickClock(dt); updateLocation(dt); if (P.srch > 0) P.srch -= dt;
-  if (TRAIN){ updateTrain(dt); if (!P.car && carryOnTrain(P)){ P.y = Math.max(P.y, groundAt(P.x, P.z, 0.3, P.y + 0.3)); P.ground = P.y; } for (const z of zombies) if (!z.rep && z.y > 0.9) carryOnTrain(z); }
+  if (TRAIN){ updateTrain(dt); if (!P.car && carryOnTrain(P, dt) && P.vy <= 0){ P.y = Math.max(P.y, groundAt(P.x, P.z, 0.3, P.y + 0.3)); P.ground = P.y; } for (const z of zombies) if (!z.rep && z.y > 0.9) carryOnTrain(z); }
   updateEnv();
   let mx = P.fin ? 0 : touch.mx, mz = P.fin ? 0 : touch.mz;
   if (!P.fin){
@@ -4703,9 +4722,9 @@ function newGame(seed){
   spawnAnimals();
   for (let i = 0; i < Math.round((SMALL ? 75 : 165) * CFG.zPop); i++) spawnZombie(28);
   if (CFG.hordesOn){ const q = n => Math.max(6, Math.round(n * CFG.zPop * (+CFG.hordeSz || 1)));
-    const H0 = SMALL ? [[20, 55, 85, 'misto'], [30, 120, 9999, 'lentos'], [15, 100, 9999, 'rapidos'], [45, 140, 9999, 'misto']]
-      : [[20, 55, 85, 'misto'], [30, 120, 9999, 'lentos'], [15, 100, 9999, 'rapidos'], [100, 170, 9999, 'misto'], [40, 150, 9999, 'lentos'], [25, 200, 9999, 'rapidos']];
-    for (let i = 0; i < (+CFG.hordeN || 6); i++){ const h = H0[i] || [pick([15, 30, 60]), 120, 9999, pick(HTYPES)]; spawnHorde(q(h[0]), false, h[1], h[2], h[3]); } }
+    const H0 = SMALL ? [[100, 150, 9999, 'misto', 'cidade'], [20, 55, 85, 'misto', 'cidade'], [25, 120, 9999, 'lentos', 'floresta'], [15, 100, 9999, 'rapidos', 'cidade'], [30, 120, 9999, 'lentos', 'floresta'], [20, 120, 9999, 'rapidos', 'cidade']]
+      : [[100, 170, 9999, 'misto', 'cidade'], [20, 55, 85, 'misto', 'cidade'], [30, 120, 9999, 'lentos', 'cidade'], [40, 150, 9999, 'lentos', 'floresta'], [15, 100, 9999, 'rapidos', 'cidade'], [30, 150, 9999, 'rapidos', 'floresta']];
+    for (let i = 0; i < (+CFG.hordeN || 6); i++){ const h = H0[i] || [pick([15, 30, 60]), 120, 9999, pick(HTYPES), Math.random() < 0.35 ? 'floresta' : 'cidade']; spawnHorde(q(h[0]), false, h[1], h[2], h[3], h[4]); } }
   // bairros com muitos infectados: zumbis a mais perambulando por lá
   for (const d of DISTRICTS){ const lv = dangerAt(d.x, d.z); if (lv < 2) continue; const want = Math.round((lv - 1) * (SMALL ? 10 : 20) * CFG.zPop);
     for (let i = 0, made = 0; i < want * 4 && made < want && zombies.length < HARDCAP; i++){ const x = d.x + R(-d.hw, d.hw), z = d.z + R(-d.hw, d.hw); if (Math.hypot(x - P.x, z - P.z) < 45 || inHouse(x, z, 0.5)) continue; const y = groundAt(x, z, 0.3, (HF ? hfAt(x, z) : 0) + 1); if (hitAny(x, z, 0.35, y + 0.05)) continue; makeZombie(x, z, Math.random() < 0.25 ? 'runner' : undefined, y); made++; } }
@@ -5041,7 +5060,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-9';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-10';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
@@ -5454,7 +5473,7 @@ shove = function(){
   return r;
 };
 spawnZombie = function(minDist, kind){ if (NET.on && NET.role === 'join') return null; return _spawnZombie(minDist, kind); };
-spawnHorde = function(n, aggro, minD, maxD, ht){ if (NET.on && NET.role === 'join') return null; return _spawnHorde(n, aggro, minD, maxD, ht); };
+spawnHorde = function(n, aggro, minD, maxD, ht, where){ if (NET.on && NET.role === 'join') return null; return _spawnHorde(n, aggro, minD, maxD, ht, where); };
 update = function(dt){ _update(dt); netTick(dt); };
 die = function(){
   _die();
