@@ -84,6 +84,11 @@ body.tch #weap{display:none}
 .panel h4{color:#c9b98f;margin:10px 0 4px;font-size:13px;letter-spacing:1px;border-bottom:1px solid #3a342a;padding-bottom:2px}
 .it{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 4px;border-bottom:1px solid #2c2720;font-size:14px}
 .it .m{font-size:11px;color:#9a917c}
+.it .ic{width:64px;height:40px;flex:0 0 64px;border-radius:5px;background:radial-gradient(circle at 50% 40%,#3a342a,#1a1712);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;cursor:zoom-in}
+.it .ic img{width:100%;height:100%;object-fit:contain}.it .tx{flex:1;min-width:0}
+.it.pop{animation:itPop .35s ease-out both}@keyframes itPop{from{opacity:0;transform:translateY(-8px) scale(.96)}to{opacity:1;transform:none}}
+#lootOpen{padding:10px 4px}#lootOpen .bar{height:8px;margin-top:8px}#lootOpen i{display:block;height:100%;width:0;background:#d9a441;animation:lootFill var(--d,0.8s) linear forwards}@keyframes lootFill{to{width:100%}}
+#itemBig{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}#itemBig .bx{background:#16130f;border:1px solid #5a4f3e;border-radius:10px;padding:14px;max-width:min(520px,92vw);text-align:center;color:#f0e6d0}#itemBig canvas{width:min(460px,86vw);height:auto;border-radius:8px;background:radial-gradient(circle at 50% 40%,#3a342a,#12100c)}
 .it .bs{display:flex;gap:4px;flex-shrink:0}
 .st{display:grid;grid-template-columns:70px 1fr 44px;gap:1px 6px;font-size:11px;color:#bbb;margin-top:3px;align-items:center;min-width:210px}
 .st .b{height:6px;background:#2a2620;border-radius:2px;overflow:hidden}.st .b i{display:block;height:100%;background:#d9a441}
@@ -258,38 +263,47 @@ const ITEMS = {
   revolver:{nome:'Revólver .38', tipo:'arma', fogo:1, dano:70, alc:45, cd:0.55, cap:6, mun:'.38', ruido:50, rec:2.0, acc:0.018, pell:1, kick:0.05, onde:'Delegacia, Loja de armas'},
   espingarda:{nome:'Espingarda cal.12', tipo:'arma', fogo:1, dano:22, alc:16, cd:0.95, cap:6, mun:'12', ruido:70, rec:2.4, acc:0.045, pell:7, kick:0.08, onde:'Delegacia, Loja de armas, porta-malas'},
   rifle:{nome:'Rifle de caça .308', tipo:'arma', fogo:1, dano:140, alc:90, cd:1.3, cap:5, mun:'.308', ruido:85, rec:2.2, acc:0.008, pell:1, kick:0.09, onde:'Loja de armas, cabanas da floresta'},
+  smg:{nome:'Submetralhadora 9mm', tipo:'arma', fogo:1, dano:30, alc:40, cd:0.09, cap:30, mun:'9mm', ruido:55, rec:1.8, acc:0.04, pell:1, kick:0.02, onde:'Delegacia, Loja de armas, prédios abandonados'},
+  fuzil:{nome:'Fuzil 5.56', tipo:'arma', fogo:1, long:1, dano:60, alc:80, cd:0.13, cap:30, mun:'5.56', ruido:90, rec:2.4, acc:0.014, pell:1, kick:0.045, onde:'Barreira militar, delegacia (raro)'},
+  besta:{nome:'Besta', tipo:'arma', fogo:1, long:1, mudo:1, dano:130, alc:60, cd:1.2, cap:1, mun:'flecha', ruido:3, rec:1.5, acc:0.01, pell:1, kick:0.03, onde:'Cabanas, Loja de esportes, Loja de armas'},
+  pa:{nome:'Pá', tipo:'arma', dano:40, alc:2.0, cd:0.85, dur:60, stam:11, multi:2, kd:0.45, onde:'Garagens, Fazendas, Celeiros'},
+  foice:{nome:'Foice', tipo:'arma', dano:48, alc:1.8, cd:0.6, dur:45, stam:9, multi:2, kd:0.15, onde:'Fazendas, Celeiros'},
+  chave:{nome:'Chave inglesa', tipo:'arma', dano:32, alc:1.6, cd:0.55, dur:80, stam:7, multi:1, kd:0.3, onde:'Garagens, Ferragens, porta-malas'},
+  katana:{nome:'Katana', tipo:'arma', dano:70, alc:2.1, cd:0.7, dur:55, stam:12, multi:2, kd:0.2, onde:'Casas de colecionador (muito rara), Loja de armas'},
   mun9:{nome:'Munição 9mm', tipo:'municao', mun:'9mm', qtd:15},
+  mun556:{nome:'Munição 5.56', tipo:'municao', mun:'5.56', qtd:20},
+  flechas:{nome:'Flechas', tipo:'municao', mun:'flecha', qtd:6},
   mun38:{nome:'Munição .38', tipo:'municao', mun:'.38', qtd:12},
   cart:{nome:'Cartuchos cal.12', tipo:'municao', mun:'12', qtd:8},
   mun308:{nome:'Munição .308', tipo:'municao', mun:'.308', qtd:10}
 };
 const PUNHOS = {nome:'Punhos', dano:9, alc:1.3, cd:0.45, stam:5, multi:1, kd:0.12};
-const WEAPON_ORDER = ['faca','martelo','pecabra','cano','taco','facao','machado','marreta','pistola','revolver','espingarda','rifle'];
+const WEAPON_ORDER = ['faca','chave','martelo','pecabra','cano','taco','pa','foice','facao','machado','katana','marreta','pistola','revolver','smg','espingarda','rifle','fuzil','besta'];
 const CT = {
   geladeira:{nome:'Geladeira', n:[0,3], tab:[['lata',3],['agua',3],['refri',2],['salg',1]]},
-  armario:{nome:'Armário', n:[0,3], tab:[['band',3],['remed',2],['antit',0.5],['faca',2],['martelo',1],['mun9',0.6],['lata',2],['salg',2],['cano',1]]},
-  caixa:{nome:'Caixa', n:[0,2], tab:[['taco',2],['cano',2],['martelo',1.5],['pecabra',1.5],['machado',0.8],['facao',0.8],['mun9',1],['cart',0.6],['pistola',0.4],['revolver',0.3]]},
-  portamalas:{nome:'Porta-malas', n:[0,2], tab:[['taco',1],['pecabra',1.5],['agua',2],['mun9',1],['cart',1],['pistola',0.4],['espingarda',0.25],['band',1],['galao',0.9],['ferram',0.4]]},
+  armario:{nome:'Armário', n:[0,3], tab:[['chave',0.6],['band',3],['remed',2],['antit',0.5],['faca',2],['martelo',1],['mun9',0.6],['lata',2],['salg',2],['cano',1]]},
+  caixa:{nome:'Caixa', n:[0,2], tab:[['chave',1],['pa',0.6],['smg',0.15],['flechas',0.3],['taco',2],['cano',2],['martelo',1.5],['pecabra',1.5],['machado',0.8],['facao',0.8],['mun9',1],['cart',0.6],['pistola',0.4],['revolver',0.3]]},
+  portamalas:{nome:'Porta-malas', n:[0,2], tab:[['chave',1.2],['smg',0.12],['mun556',0.15],['pa',0.4],['taco',1],['pecabra',1.5],['agua',2],['mun9',1],['cart',1],['pistola',0.4],['espingarda',0.25],['band',1],['galao',0.9],['ferram',0.4]]},
   lixeira:{nome:'Lixeira', n:[0,1], tab:[['salg',2],['refri',2],['cano',1],['band',0.5]]},
   mercado:{nome:'Prateleira', n:[1,4], tab:[['lata',4],['salg',3],['agua',4],['refri',3]]},
   farmacia:{nome:'Prateleira', n:[1,3], tab:[['band',4],['remed',3],['kit',1.5],['agua',1],['antibio',2.2],['antit',2.2]]},
-  delegacia:{nome:'Armário da polícia', n:[1,3], tab:[['pistola',2],['revolver',1.5],['espingarda',1.2],['mun9',3],['mun38',2],['cart',2],['band',1]]},
-  armas:{nome:'Vitrine', n:[1,3], tab:[['pistola',2],['revolver',2],['espingarda',1.5],['rifle',1.2],['mun9',2],['mun38',2],['cart',2],['mun308',2],['facao',1]]},
-  ferragem:{nome:'Prateleira', n:[1,3], tab:[['martelo',2],['pecabra',2],['machado',1.5],['marreta',1],['facao',1],['cano',1],['ferram',1.2],['galao',0.6]]},
+  delegacia:{nome:'Armário da polícia', n:[1,3], tab:[['smg',1.2],['fuzil',0.35],['mun556',0.8],['pistola',2],['revolver',1.5],['espingarda',1.2],['mun9',3],['mun38',2],['cart',2],['band',1]]},
+  armas:{nome:'Vitrine', n:[1,3], tab:[['smg',1.2],['fuzil',0.6],['mun556',1.4],['besta',0.9],['flechas',1.5],['katana',0.4],['pistola',2],['revolver',2],['espingarda',1.5],['rifle',1.2],['mun9',2],['mun38',2],['cart',2],['mun308',2],['facao',1]]},
+  ferragem:{nome:'Prateleira', n:[1,3], tab:[['chave',1.5],['pa',1.2],['foice',0.8],['martelo',2],['pecabra',2],['machado',1.5],['marreta',1],['facao',1],['cano',1],['ferram',1.2],['galao',0.6]]},
   balcao:{nome:'Balcão', n:[0,2], tab:[['salg',2],['refri',2],['mun9',1],['band',1],['galao',0.6],['antit',0.4]]},
   cozinha:{nome:'Armário da cozinha', n:[0,3], tab:[['lata',3],['salg',2],['faca',1.5],['agua',1],['refri',1]]},
-  guardaroupa:{nome:'Guarda-roupa', n:[0,2], tab:[['band',2],['taco',0.6],['revolver',0.15],['mun38',0.3],['remed',0.5],['pecabra',0.3]]},
+  guardaroupa:{nome:'Guarda-roupa', n:[0,2], tab:[['katana',0.05],['smg',0.04],['band',2],['taco',0.6],['revolver',0.15],['mun38',0.3],['remed',0.5],['pecabra',0.3]]},
   banheiro:{nome:'Armário do banheiro', n:[0,2], tab:[['band',3],['remed',3],['kit',0.4],['antit',1],['antibio',0.3]]},
-  garagem:{nome:'Prateleira da garagem', n:[0,2], tab:[['martelo',1.5],['pecabra',1],['machado',0.5],['cano',1],['marreta',0.3],['galao',1.3],['ferram',0.9]]},
-  esportes:{nome:'Prateleira', n:[1,3], tab:[['taco',3],['cano',1],['facao',1],['agua',2],['salg',1]]},
+  garagem:{nome:'Prateleira da garagem', n:[0,2], tab:[['chave',1.5],['pa',1.2],['foice',0.4],['martelo',1.5],['pecabra',1],['machado',0.5],['cano',1],['marreta',0.3],['galao',1.3],['ferram',0.9]]},
+  esportes:{nome:'Prateleira', n:[1,3], tab:[['besta',0.6],['flechas',1.4],['taco',3],['cano',1],['facao',1],['agua',2],['salg',1]]},
   roupas:{nome:'Arara de roupas', n:[0,2], tab:[['band',3],['remed',0.5],['salg',0.5]]},
   lanchonete:{nome:'Balcão', n:[1,3], tab:[['lata',2],['salg',3],['refri',3],['agua',2]]},
   igreja:{nome:'Caixa de doações', n:[1,3], tab:[['lata',3],['agua',3],['band',2],['remed',1],['antit',0.6],['antibio',0.3]]},
-  caverna:{nome:'Mochila abandonada', n:[1,3], tab:[['lata',2],['agua',2],['band',2],['kit',0.6],['rifle',0.4],['mun308',1],['pistola',0.5],['mun9',1.5],['machado',0.5],['marreta',0.2]]},
-  celeiro:{nome:'Bancada', n:[1,3], tab:[['galao',0.9],['ferram',0.5],['machado',1.5],['marreta',0.8],['pecabra',1.2],['facao',1],['martelo',1.5],['espingarda',0.6],['cart',1.5],['lata',1],['agua',1]]},
+  caverna:{nome:'Mochila abandonada', n:[1,3], tab:[['smg',0.3],['mun556',0.4],['flechas',0.6],['lata',2],['agua',2],['band',2],['kit',0.6],['rifle',0.4],['mun308',1],['pistola',0.5],['mun9',1.5],['machado',0.5],['marreta',0.2]]},
+  celeiro:{nome:'Bancada', n:[1,3], tab:[['foice',1.5],['pa',1.4],['galao',0.9],['ferram',0.5],['machado',1.5],['marreta',0.8],['pecabra',1.2],['facao',1],['martelo',1.5],['espingarda',0.6],['cart',1.5],['lata',1],['agua',1]]},
   despensa:{nome:'Despensa', n:[1,3], tab:[['lata',3],['agua',2],['carneA',0.6],['salg',1],['cart',0.7]]},
-  mirante:{nome:'Caixa de suprimentos', n:[2,4], tab:[['antibio',0.7],['agua',2],['lata',2],['kit',1],['rifle',0.6],['mun308',1.5],['espingarda',0.5],['cart',1]]},
-  cabana:{nome:'Baú', n:[1,3], tab:[['rifle',1],['mun308',2],['machado',1.5],['facao',1.5],['lata',2],['agua',1],['cart',1],['espingarda',0.5]]}
+  mirante:{nome:'Caixa de suprimentos', n:[2,4], tab:[['fuzil',0.25],['mun556',0.8],['besta',0.4],['flechas',0.8],['antibio',0.7],['agua',2],['lata',2],['kit',1],['rifle',0.6],['mun308',1.5],['espingarda',0.5],['cart',1]]},
+  cabana:{nome:'Baú', n:[1,3], tab:[['besta',0.8],['flechas',1.5],['foice',0.6],['rifle',1],['mun308',2],['machado',1.5],['facao',1.5],['lata',2],['agua',1],['cart',1],['espingarda',0.5]]}
 };
 function genLoot(t){
   const c = CT[t], n = RI(c.n[0], c.n[1]), out = [], tot = c.tab.reduce((s, e) => s + e[1], 0);
@@ -2696,10 +2710,11 @@ function playerHit(z){
   if (sfx(tipo === 'MORDIDA' ? 'bite' : 'zclaw', 0.8)){ setTimeout(() => sfx('hurt', 0.55), 90); } else { toneSnd(220, 120, 0.25, 0.08, 'square'); noiseSnd(0.1, 0.25, 900); }
 }
 function weapon(){ return P.equip ? ITEMS[P.equip.id] : PUNHOS; }
-const GUNSND = {pistola:[0.3, 0.8, 2600], revolver:[0.4, 0.9, 2000], espingarda:[0.55, 1, 1500], rifle:[0.6, 1, 1900]};
-const GUNS2 = {pistola:['gun_pistol', 0.85, 1.05], revolver:['gun_pistol', 1.0, 0.82], espingarda:['gun_shotgun', 1.0, 1], rifle:['gun_rifle', 1.0, 1]};
+const GUNSND = {pistola:[0.3, 0.8, 2600], revolver:[0.4, 0.9, 2000], espingarda:[0.55, 1, 1500], rifle:[0.6, 1, 1900], smg:[0.2, 0.7, 2800], fuzil:[0.45, 1, 2100], besta:[0.1, 0.2, 800]};
+const GUNS2 = {pistola:['gun_pistol', 0.85, 1.05], revolver:['gun_pistol', 1.0, 0.82], espingarda:['gun_shotgun', 1.0, 1], rifle:['gun_rifle', 1.0, 1], smg:['gun_pistol', 0.7, 1.25], fuzil:['gun_rifle', 0.9, 1.25]};
 // silenciador: "tum" abafado + estalo do mecanismo; os zumbis só ouvem de pertinho
 const SIL_NOISE = 3;
+function bowSnd(){ toneSnd(220, 90, 0.12, 0.12, 'triangle'); noiseSnd(0.06, 0.1, 1800); setTimeout(() => noiseSnd(0.05, 0.06, 900), 90); }
 function silSnd(){ noiseSnd(0.16, 0.32, 520); noiseSnd(0.05, 0.12, 2400); setTimeout(() => toneSnd(1700, 900, 0.03, 0.05, 'square'), 40); setTimeout(() => sfx('rl_shell', 0.25, undefined, undefined, 1.3) || toneSnd(700, 500, 0.05, 0.04, 'square'), 380); }
 function gunSnd(id){ const g = GUNS2[id], sd = GUNSND[id]; if (g && sfx(g[0], g[1], undefined, undefined, g[2])) return; noiseSnd(sd[0], sd[1], sd[2]); setTimeout(() => noiseSnd(sd[0] * 1.8, sd[1] * 0.25, 600), 230); }
 
@@ -2707,7 +2722,7 @@ function startReload(){
   const it = P.equip; if (!it) return; const w = ITEMS[it.id]; if (!w.fogo || P.reload > 0) return;
   if (it.mag >= w.cap){ return; }
   if ((P.ammo[w.mun] || 0) <= 0){ log('Sem munição ' + w.mun + ' na mochila.', '#ffb070'); return; }
-  P.reload = w.rec; P.reloadIt = it; sfx(it.id === 'espingarda' ? 'rl_shell' : it.id === 'rifle' ? 'rl_rifle' : 'rl_pistol', 0.6) || toneSnd(600, 400, 0.08, 0.05, 'square');
+  P.reload = w.rec; P.reloadIt = it; sfx(it.id === 'espingarda' ? 'rl_shell' : (it.id === 'rifle' || it.id === 'fuzil' || it.id === 'besta') ? 'rl_rifle' : 'rl_pistol', 0.6) || toneSnd(600, 400, 0.08, 0.05, 'square');
 }
 function finishReload(){
   const it = P.reloadIt; P.reload = 0; P.reloadIt = null; if (!it || it !== P.equip) return;
@@ -2850,9 +2865,9 @@ function corpsePick(o, hx, hz, tp, tmax){
 function shoot(w){
   if (P.reload > 0) return;
   if (P.equip.mag <= 0){ P.cd = 0.3; sfx('gun_empty', 0.6) || toneSnd(900, 900, 0.04, 0.05, 'square'); if ((P.ammo[w.mun] || 0) > 0){ if (CFG.autoReload) startReload(); else log('Pente vazio — aperte R.'); } else log('Sem munição!'); return; }
-  const sil = !!P.equip.sil;
+  const sil = !!P.equip.sil || !!w.mudo;
   P.equip.mag--; P.cd = w.cd; swingT = 1; muzzleT = sil ? 0 : 0.06; shake = w.kick * 3;
-  if (sil) silSnd(); else gunSnd(P.equip.id); emitNoise(P.x, P.z, sil ? SIL_NOISE : w.ruido);
+  if (w.mudo) bowSnd(); else if (sil) silSnd(); else gunSnd(P.equip.id); emitNoise(P.x, P.z, w.mudo ? w.ruido : sil ? SIL_NOISE : w.ruido);
   const C = camera.position, sp = P.spread, ra = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * sp;
   const yaw0 = P.yaw + Math.cos(ra) * rr, pit0 = P.pitch + Math.sin(ra) * rr, tp3 = P.view === 3;
   // em 3ª pessoa a câmera fica atrás do ombro: a mira acha o ponto, mas a bala sai da arma (do peito do personagem)
@@ -2954,7 +2969,7 @@ function cycleWeapon(dir){
 }
 
 // ================= ARMA NA MÃO =================
-const MUZ = {pistola:0.24, revolver:0.28, espingarda:0.84, rifle:0.9};
+const MUZ = {pistola:0.24, revolver:0.28, espingarda:0.84, rifle:0.9, smg:0.4, fuzil:0.88, besta:0.7};
 let flashMat = null;
 function buildViewModel(){
   vm = new THREE.Group(); camera.add(vm); vmParts = {};
@@ -2979,6 +2994,14 @@ function buildViewModel(){
   vmParts.revolver = mk([[0.05, 0.13, 0.06, brn, 0, -0.02, 0], [0.07, 0.07, 0.08, gry, 0, 0.06, -0.03], [0.035, 0.035, 0.2, gry, 0, 0.07, -0.16]], [[0.08, 0.08, 0.14, sk, 0, -0.08, 0.06]].concat(armR, armL(-0.04, -0.09, 0.05)));
   vmParts.espingarda = mk([[0.06, 0.1, 0.3, brn, 0, -0.01, 0.14], [0.06, 0.08, 0.3, blk, 0, 0.02, -0.15], [0.04, 0.04, 0.55, blk, 0, 0.05, -0.55], [0.065, 0.055, 0.2, brn, 0, 0.0, -0.45]], [[0.08, 0.08, 0.16, sk, 0, -0.08, 0.02]].concat(armR, armL(0, -0.05, -0.45)));
   vmParts.rifle = mk([[0.06, 0.11, 0.35, brn, 0, -0.01, 0.15], [0.06, 0.07, 0.42, brn, 0, 0.02, -0.2], [0.03, 0.03, 0.55, blk, 0, 0.04, -0.62], [0.045, 0.045, 0.26, blk, 0, 0.1, -0.15], [0.06, 0.06, 0.03, blk, 0, 0.1, -0.29]], [[0.08, 0.08, 0.16, sk, 0, -0.08, 0.02]].concat(armR, armL(0, -0.04, -0.4)));
+  const gr2 = 0x2e3a2a, stl = 0x6a6e72;
+  vmParts.chave = mk([hand, [0.04, 0.4, 0.025, stl, 0, 0.14, 0], [0.11, 0.08, 0.03, stl, 0, 0.36, 0], [0.04, 0.05, 0.03, 0x1a1a1a, 0.03, 0.42, 0]], armMelee);
+  vmParts.pa = mk([hand, [0.04, 0.9, 0.04, brn, 0, 0.32, 0], [0.09, 0.05, 0.05, blk, 0, -0.1, 0], [0.22, 0.28, 0.02, stl, 0, 0.88, 0.02]], am2);
+  vmParts.foice = mk([hand, [0.04, 0.28, 0.04, brn, 0, 0.08, 0], [0.012, 0.05, 0.34, gry, 0, 0.26, 0.15], [0.012, 0.16, 0.05, gry, 0, 0.2, 0.31]], armMelee);
+  vmParts.katana = mk([hand, [0.045, 0.24, 0.045, 0x2a1a1a, 0, 0.08, 0], [0.09, 0.02, 0.09, 0xb09040, 0, 0.21, 0], [0.012, 0.75, 0.05, 0xd8dce0, 0, 0.6, 0.01]], am2);
+  vmParts.smg = mk([[0.05, 0.12, 0.06, blk, 0, -0.03, 0.02], [0.06, 0.08, 0.32, blk, 0, 0.05, -0.08], [0.04, 0.18, 0.05, blk, 0, -0.08, -0.12], [0.025, 0.025, 0.12, 0x333333, 0, 0.06, -0.28]], [[0.08, 0.08, 0.14, sk, 0, -0.08, 0.06]].concat(armR, armL(-0.02, -0.08, -0.12)));
+  vmParts.fuzil = mk([[0.06, 0.1, 0.3, blk, 0, -0.02, 0.16], [0.065, 0.09, 0.42, gr2, 0, 0.02, -0.2], [0.05, 0.2, 0.07, blk, 0, -0.1, -0.12, 0.25], [0.028, 0.028, 0.5, blk, 0, 0.04, -0.62], [0.04, 0.06, 0.12, blk, 0, 0.1, -0.12]], [[0.08, 0.08, 0.16, sk, 0, -0.08, 0.02]].concat(armR, armL(0, -0.04, -0.42)));
+  vmParts.besta = mk([[0.06, 0.09, 0.3, brn, 0, -0.01, 0.12], [0.05, 0.06, 0.5, brn, 0, 0.02, -0.25], [0.6, 0.04, 0.05, dk, 0, 0.03, -0.48], [0.58, 0.008, 0.008, 0xd8d0b8, 0, 0.05, -0.42], [0.012, 0.012, 0.45, 0x8a6a40, 0, 0.06, -0.3]], [[0.08, 0.08, 0.16, sk, 0, -0.08, 0.02]].concat(armR, armL(0, -0.04, -0.35)));
   if (!flashMat){ const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,220,1)'); gr.addColorStop(0.3, 'rgba(255,200,80,0.9)'); gr.addColorStop(1, 'rgba(255,120,20,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); flashMat = new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), blending:THREE.AdditiveBlending, depthWrite:false, transparent:true}); }
   vm.userData.fl = new THREE.Sprite(flashMat); vm.userData.fl.visible = false; vm.add(vm.userData.fl);
   // silenciador (só aparece na arma que tiver um)
@@ -3001,7 +3024,7 @@ function updateVM(dt, moving){
   const bob = moving ? Math.sin(P.bob) * (run ? 0.03 : 0.014) : Math.sin(performance.now() / 700) * 0.004, bobX = moving ? Math.cos(P.bob * 0.5) * (run ? 0.03 : 0.01) : 0;
   const s = Math.sin((1 - swingT) * Math.PI) * (swingT > 0 ? 1 : 0), sx = clamp(P.swayX, -0.06, 0.06), sy = clamp(P.swayY, -0.05, 0.05), rc = P.recoil;
   if (w.fogo){
-    const long = id === 'espingarda' || id === 'rifle', ak = P.aimK;
+    const long = isLong(id), ak = P.aimK;
     const rl = P.reload > 0 ? Math.sin((1 - P.reload / w.rec) * Math.PI) : 0;
     vm.position.set((long ? 0.18 : 0.22) * (1 - ak) - sx * (1 - ak * 0.7) + bobX * (1 - ak), (long ? -0.22 : -0.2) * (1 - ak) + (long ? -0.12 : -0.13) * ak + bob * (1 - ak * 0.8) - rl * 0.15 + sy - (run ? 0.04 : 0), (long ? -0.32 : -0.42) + rc * (long ? 0.09 : 0.06));
     vm.rotation.set(rc * (long ? 0.18 : 0.3) - rl * 0.8 + (run ? -0.25 : 0), sx * 2 + (run ? 0.5 : 0), rl * 0.4 + (run ? 0.2 : 0));
@@ -3013,7 +3036,7 @@ function updateVM(dt, moving){
     vm.rotation.set(-0.5 + wind * 0.6 - strike * 1.5 + (run ? 0.3 : 0), 0.1 + sx * 2, -0.35 + strike * 0.7);
   }
   const fl = vm.userData.fl; fl.visible = muzzleT > 0 && w.fogo && P.view === 1;
-  if (fl.visible){ const long = id === 'espingarda' || id === 'rifle'; fl.position.set(0, long ? 0.05 : 0.07, -(MUZ[id] || 0.3) - 0.05); fl.material.rotation = R(0, 6); fl.scale.setScalar(R(0.22, 0.35) * (long ? 1.3 : 1)); }
+  if (fl.visible){ const long = isLong(id); fl.position.set(0, long ? 0.05 : 0.07, -(MUZ[id] || 0.3) - 0.05); fl.material.rotation = R(0, 6); fl.scale.setScalar(R(0.22, 0.35) * (long ? 1.3 : 1)); }
   muzzle.intensity = muzzleT > 0 ? 3 : 0; muzzleT -= dt;
 }
 
@@ -3147,18 +3170,66 @@ function closePanel(){
   if ((was === 'guide' || was === 'cfg') && prevPanel){ const pp = prevPanel; prevPanel = null; if (pp === 'start') return; if (pp === 'pause'){ $('#pause').style.display = 'flex'; return; } }
   lock();
 }
+// som de abrir cada tipo de móvel
+const OPEN_T = {geladeira:[0.6, 'gel'], portamalas:[0.9, 'carro'], cabana:[1.1, 'bau'], caixa:[0.9, 'bau'], mirante:[1.0, 'bau'], caverna:[0.8, 'pano'], lixeira:[0.7, 'metal'], delegacia:[1.0, 'metal'], armas:[0.9, 'vidro'], carcaca:[1.2, 'pano']};
+function openSnd(k){
+  if (k === 'carro'){ sfx('car_door_open', 0.5) || noiseSnd(0.1, 0.1, 700); return; }
+  if (k === 'gel'){ noiseSnd(0.12, 0.15, 300); setTimeout(() => toneSnd(160, 120, 0.15, 0.05, 'sine'), 80); return; }
+  if (k === 'metal'){ toneSnd(900, 600, 0.12, 0.05, 'square'); setTimeout(() => noiseSnd(0.08, 0.12, 2200), 120); return; }
+  if (k === 'vidro'){ toneSnd(1800, 1400, 0.06, 0.04, 'sine'); noiseSnd(0.05, 0.06, 3000); return; }
+  if (k === 'pano'){ noiseSnd(0.35, 0.08, 900, 'bandpass'); return; }
+  // madeira rangendo (armário, baú, gaveta)
+  toneSnd(320, 180, 0.35, 0.05, 'sawtooth'); setTimeout(() => noiseSnd(0.06, 0.14, 500), k === 'bau' ? 420 : 300);
+}
 function openLoot(c){
   openPanel('loot'); lootC = c; $('#lootP').style.display = 'block'; $('#lootT').textContent = c.nome;
-  if (!c.aberto){ $('#lootL').innerHTML = '<div class="it">Revistando...</div>'; emitNoise(P.x, P.z, 3);
-    setTimeout(() => { if (lootC === c){ c.aberto = true; renderLoot(); } }, 600); }
+  if (!c.aberto){
+    const [dur, k] = OPEN_T[c.tipo] || [0.75, 'madeira'];
+    $('#lootL').innerHTML = `<div id="lootOpen">${k === 'bau' ? 'Abrindo a tampa' : k === 'carro' ? 'Abrindo o porta-malas' : k === 'pano' ? 'Mexendo' : 'Abrindo'}... <div class="bar"><i style="--d:${dur}s"></i></div></div>`;
+    emitNoise(P.x, P.z, 3); openSnd(k); P.srch = dur;
+    setTimeout(() => { if (lootC === c){ c.aberto = true; renderLoot(true); } }, dur * 1000); }
   else renderLoot();
 }
-function renderLoot(){
+// prévia do item: armas são desenhadas em 3D (girando no zoom); o resto ganha um ícone
+const ICON = {lata:'🥫', salg:'🍿', carne:'🥩', carneA:'🍖', agua:'💧', refri:'🥤', band:'🩹', remed:'💊', antit:'🌡️', antibio:'💉', galao:'⛽', ferram:'🧰', kit:'🩺', mun9:'🔸', mun38:'🔸', cart:'🔴', mun308:'🔶', mun556:'🔶', flechas:'🏹'};
+let ICR = null, ICS = null, ICC = null; const ICACHE = {};
+function iconRig(){
+  if (ICR) return true;
+  try { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 160; ICR = new THREE.WebGLRenderer({canvas:cv, alpha:true, antialias:true, preserveDrawingBuffer:true}); ICR.setClearColor(0, 0);
+    ICS = new THREE.Scene(); ICS.add(new THREE.HemisphereLight(0xffffff, 0x606060, 1.5)); const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(1, 2, 2); ICS.add(dl);
+    ICC = new THREE.PerspectiveCamera(30, 256 / 160, 0.05, 20); return true; } catch(e){ ICR = null; return false; }
+}
+function drawWeapon(id, ang, w, h){
+  const src = vmParts[id]; if (!src || !iconRig()) return null;
+  const m = new THREE.Mesh(src.userData.wgeo || src.geometry, src.material), inner = new THREE.Group(); inner.add(m);
+  if (!ITEMS[id].fogo) m.rotation.z = -Math.PI / 2;   // armas brancas deitadas
+  inner.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(inner), c = bb.getCenter(new THREE.Vector3()), dim = bb.getSize(new THREE.Vector3()), sz = Math.max(dim.x, dim.y, dim.z);
+  inner.position.copy(c).negate();
+  const g = new THREE.Group(); g.add(inner); g.rotation.set(0.3, ang, 0); ICS.add(g);
+  ICC.position.set(0, 0, sz * 1.9); ICC.lookAt(0, 0, 0); ICR.setSize(w, h, false); ICC.aspect = w / h; ICC.updateProjectionMatrix(); ICR.render(ICS, ICC); ICS.remove(g);
+  return ICR.domElement;
+}
+function itemIcon(id){
+  if (ICACHE[id] !== undefined) return ICACHE[id];
+  let html = ICON[id] || '📦';
+  if (ITEMS[id] && ITEMS[id].tipo === 'arma'){ const cv = drawWeapon(id, Math.PI / 2 - 0.35, 256, 160); if (cv) html = '<img src="' + cv.toDataURL() + '">'; }
+  return (ICACHE[id] = html);
+}
+function itemZoom(id){
+  let ov = $('#itemBig'); if (!ov){ ov = document.createElement('div'); ov.id = 'itemBig'; ov.innerHTML = '<div class="bx"><canvas id="itemBigC" width="460" height="260"></canvas><div id="itemBigT"></div><button class="btn s" style="margin-top:8px" onclick="itemZoomClose()">Fechar</button></div>'; ov.onclick = e => { if (e.target === ov) itemZoomClose(); }; document.body.appendChild(ov); }
+  ov.style.display = 'flex'; $('#itemBigT').innerHTML = `<b>${ITEMS[id].nome}</b><br><span style="font-size:12px;color:#b8b0a0">${descr(id)}</span>${statHTML(ITEMS[id])}`;
+  const g = $('#itemBigC').getContext('2d'); let a = 0; clearInterval(ov.tm);
+  const step = () => { g.clearRect(0, 0, 460, 260); if (ITEMS[id].tipo === 'arma'){ const cv = drawWeapon(id, Math.PI / 2 + Math.sin(a) * 1.1, 460, 260); if (cv) g.drawImage(cv, 0, 0, 460, 260); } else { g.font = '120px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ICON[id] || '📦', 230, 135 + Math.sin(a * 2) * 6); } a += 0.04; };
+  step(); ov.tm = setInterval(step, 33);
+}
+function itemZoomClose(){ const ov = $('#itemBig'); if (ov){ clearInterval(ov.tm); ov.style.display = 'none'; } }
+function renderLoot(anim){
   const c = lootC; if (!c) return;
-  $('#lootL').innerHTML = c.loot.length ? '' : '<div class="it" style="color:#9a917c">Vazio.</div>';
+  $('#lootL').innerHTML = c.loot.length ? '' : '<div class="it pop" style="color:#9a917c">Vazio.</div>';
   c.loot.forEach((id, i) => {
-    const d = document.createElement('div'); d.className = 'it';
-    d.innerHTML = `<span>${ITEMS[id].nome}<br><span class="m">${descr(id)}</span>${statHTML(ITEMS[id])}</span>`;
+    const d = document.createElement('div'); d.className = 'it' + (anim ? ' pop' : ''); if (anim) d.style.animationDelay = (i * 0.12) + 's';
+    d.innerHTML = `<span class="ic" title="Ver de perto">${itemIcon(id)}</span><span class="tx">${ITEMS[id].nome}<br><span class="m">${descr(id)}</span>${statHTML(ITEMS[id])}</span>`;
+    d.querySelector('.ic').onclick = () => itemZoom(id);
     const b = document.createElement('button'); b.className = 'btn s'; b.textContent = 'Pegar';
     b.onclick = () => { if (addItem(id)){ c.loot.splice(i, 1); renderLoot(); } };
     d.appendChild(b); $('#lootL').appendChild(d);
@@ -3170,7 +3241,7 @@ function renderInv(){
   $('#invC').textContent = `(${P.inv.length}/16)`;
   const L = $('#invL'); L.innerHTML = '';
   const am = document.createElement('div'); am.className = 'amm';
-  am.innerHTML = `<b>Munição:</b> 9mm ${P.ammo['9mm']} · .38 ${P.ammo['.38']} · cal.12 ${P.ammo['12']} · .308 ${P.ammo['.308']}`;
+  am.innerHTML = `<b>Munição:</b> 9mm ${P.ammo['9mm']} · .38 ${P.ammo['.38']} · cal.12 ${P.ammo['12']} · .308 ${P.ammo['.308']} · 5.56 ${P.ammo['5.56'] || 0} · flechas ${P.ammo['flecha'] || 0}`;
   L.appendChild(am);
   const sec = (title, list, isW) => {
     const h = document.createElement('h4'); h.textContent = title; L.appendChild(h);
@@ -3179,12 +3250,12 @@ function renderInv(){
       const d = ITEMS[it.id], row = document.createElement('div'); row.className = 'it';
       const slot = isW ? `<b style="color:#e3b55b">[${weaponsList().indexOf(it) + 1}]</b> ` : '';
       const cond = it.dur !== undefined ? ` · condição ${Math.round(it.dur / d.dur * 100)}%` : d.fogo ? ` · pente ${it.mag}/${d.cap}` : '';
-      row.innerHTML = `<span>${slot}${d.nome}${P.equip === it ? ' <b style="color:#9fe09a">[na mão]</b>' : ''}<br><span class="m">${descr(it.id)}${cond}</span>${statHTML(d)}</span>`;
+      row.innerHTML = `<span class="ic">${itemIcon(it.id)}</span><span class="tx">${slot}${d.nome}${P.equip === it ? ' <b style="color:#9fe09a">[na mão]</b>' : ''}<br><span class="m">${descr(it.id)}${cond}</span>${statHTML(d)}</span>`;
       const bs = document.createElement('div'); bs.className = 'bs';
       const b1 = document.createElement('button'); b1.className = 'btn s';
       b1.textContent = isW ? (P.equip === it ? 'Guardar' : 'Equipar') : d.cru ? (nearCook() ? 'Cozinhar' : 'Comer crua') : 'Usar'; b1.onclick = () => useItem(it);
       const b2 = document.createElement('button'); b2.className = 'btn s g'; b2.textContent = 'Largar'; b2.onclick = () => dropItem(it);
-      bs.append(b1, b2); row.appendChild(bs); L.appendChild(row);
+      bs.append(b1, b2); row.appendChild(bs); row.querySelector('.ic').onclick = () => itemZoom(it.id); L.appendChild(row);
     }
   };
   sec('ARMAS', weaponsList(), true);
@@ -3387,7 +3458,7 @@ function updateFinisher(dt){
     f.done = true;
     const dx = z.x - P.x, dz = z.z - P.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d;
     if (f.gun){
-      const w = ITEMS[f.id], sd = GUNSND[f.id]; const sil = !!P.equip.sil; P.equip.mag--; muzzleT = sil ? 0 : 0.06; P.recoil = 1; if (sil) silSnd(); else gunSnd(f.id); emitNoise(P.x, P.z, sil ? SIL_NOISE : w.ruido);
+      const w = ITEMS[f.id], sd = GUNSND[f.id]; const sil = !!P.equip.sil || !!w.mudo; P.equip.mag--; muzzleT = sil ? 0 : 0.06; P.recoil = 1; if (w.mudo) bowSnd(); else if (sil) silSnd(); else gunSnd(f.id); emitNoise(P.x, P.z, sil ? SIL_NOISE : w.ruido);
       if (!sever(z, 'head', ux, uz, 1, true) && zombies.indexOf(z) >= 0) hitZombie(z, 1e4, ux, uz, 0, {head:true, part:'head'});
     } else {
       const sharp = f.id === 'machado' || f.id === 'facao', stab = f.id === 'faca';
@@ -3787,14 +3858,18 @@ const GUNP = {
   pistola:{s:1.3, oy:0, oz:0, r:[0, -0.04, -0.01], l:[0.05, -0.08, 0.02], mag:[0, -0.13, 0]},
   revolver:{s:1.3, oy:0, oz:0, r:[0, -0.04, -0.01], l:[0.05, -0.08, 0.02], mag:[0.06, 0.02, 0.05]},
   espingarda:{s:1.0, oy:0, oz:0.29, r:[0, -0.08, 0.27], l:[0, -0.05, 0.66], mag:[0, -0.06, 0.45]},
-  rifle:{s:1.0, oy:0, oz:0.325, r:[0, -0.08, 0.30], l:[0, -0.05, 0.55], mag:[0, -0.12, 0.42]}
+  rifle:{s:1.0, oy:0, oz:0.325, r:[0, -0.08, 0.30], l:[0, -0.05, 0.55], mag:[0, -0.12, 0.42]},
+  smg:{s:1.15, oy:0, oz:0.05, r:[0, -0.05, 0.02], l:[0, -0.06, -0.2], mag:[0, -0.14, -0.05]},
+  fuzil:{s:1.0, oy:0, oz:0.3, r:[0, -0.08, 0.26], l:[0, -0.05, 0.58], mag:[0, -0.14, 0.4]},
+  besta:{s:1.0, oy:0, oz:0.28, r:[0, -0.08, 0.24], l:[0, -0.05, 0.5], mag:[0, 0.06, 0.62]}
 };
 // poses da arma: [x, y, z, rotX, rotY, rotZ, giro do tronco] (lado direito; espelha no ombro esquerdo)
 const GPOSE = {
   curta:{aim:[-0.08, 1.42, 0.5, 0, 0, 0, -0.15], idle:[-0.1, 1.12, 0.36, 0.75, 0, 0, -0.1], run:[-0.1, 1.1, 0.3, 1.0, 0, 0, 0], reload:[-0.05, 1.2, 0.35, 0.3, 0.5, 0, -0.1], shove:[-0.05, 1.3, 0.45, 0.2, 0, 0, 0]},
   longa:{aim:[0, 1.47, -0.05, 0, 0, 0, -0.5], idle:[-0.17, 1.4, 0.06, 0.62, 0.3, 0, -0.18], run:[-0.18, 1.1, 0.2, -0.35, 0.9, 0, -0.1], reload:[-0.1, 1.2, -0.05, 0.35, 0.4, 0.4, -0.3], shove:[-0.15, 1.25, 0.15, 0, 1.35, 0, 0]}
 };
-const TWO_H = {pecabra:1, cano:1, taco:1, machado:1, marreta:1};
+const TWO_H = {pecabra:1, cano:1, taco:1, machado:1, marreta:1, pa:1, katana:1};
+const isLong = id => !!(ITEMS[id] && (ITEMS[id].long || id === 'espingarda' || id === 'rifle'));
 const ARM1 = 0.32, ARM2 = 0.31, _ikv = new THREE.Vector3();
 // IK de dois ossos: gira ombro e cotovelo para a mão chegar no ponto (coordenadas do mundo)
 function armIK(u, f, wp){
@@ -3867,7 +3942,7 @@ function updatePlayerModel(dt, moving, spd, air){
   pm.yaw = lerpAng(pm.yaw, hipT, dt * 10);
   pm.ayaw = forced ? lerpAng(pm.ayaw, P.yaw, dt * 22) : lerpAng(pm.ayaw, pm.yaw, dt * 12);
   pm.back = back;
-  const fin = P.fin, run = spd > 5 && moving && !air, crouch = (P.agach || !!P.act || (fin && !fin.gun && fin.id !== 'punhos')) && !air;
+  const fin = P.fin, run = spd > 5 && moving && !air, crouch = (P.agach || !!P.act || P.srch > 0 || (fin && !fin.gun && fin.id !== 'punhos')) && !air;
   if (moving && !air) pm.walk += dt * spd * (run ? 1.75 : 2.3) * (back ? -1 : 1);
   const ph = pm.walk, amp = moving ? (run ? 1.1 : crouch ? 0.35 : 0.55) : 0, kA = run ? 2.0 : 0.75, sn = Math.sin(ph), cs = Math.cos(ph);
   // pernas: na corrida a coxa sobe mais e o joelho de trás dobra bem
@@ -3924,7 +3999,7 @@ function updatePlayerModel(dt, moving, spd, air){
   // arma de fogo: a arma tem pose própria e as DUAS mãos vão até ela
   let blT = 0;
   if (gunMode){
-    const long = id === 'espingarda' || id === 'rifle', GP = GPOSE[long ? 'longa' : 'curta'], c = pm.gp;
+    const long = isLong(id), GP = GPOSE[long ? 'longa' : 'curta'], c = pm.gp;
     let T = P.shoveT > 0 ? GP.shove : P.reload > 0 ? GP.reload : (P.aim || swingT > 0 || fin) ? GP.aim : run ? GP.run : GP.idle;
     if (T === GP.aim){ T = T.slice(); T[3] = -P.pitch; }
     const k = 1 - Math.exp(-dt * (P.aim || fin ? 28 : 13));
@@ -4034,7 +4109,7 @@ function tickClock(dt){
   if (CFG.nightLock && !roomLocked()){ const d0 = Math.floor(gameMin / 1440) * 1440, h = (gameMin - d0) / 60; if (h > 4.5 && h < 20.5) gameMin = d0 + 20.5 * 60; }
 }
 function update(dt){
-  tickClock(dt);
+  tickClock(dt); if (P.srch > 0) P.srch -= dt;
   updateEnv();
   let mx = P.fin ? 0 : touch.mx, mz = P.fin ? 0 : touch.mz;
   if (!P.fin){
@@ -4208,12 +4283,13 @@ function newGame(seed){
   try { buildWorld(); } finally { Math.random = RND0; }
   const home = spawnHouse;
   P = {x:home.dpx - home.dnx * 1.3, z:home.dpz - home.dnz * 1.3, yaw:Math.atan2(-home.dnx, -home.dnz), pitch:0, vida:100, fome:85, sede:80, stam:100, sang:0, infect:false, infT:0, febre:false,
-       agach:false, exausto:false, luz:false, inv:[], equip:null, ammo:{'9mm':0, '.38':0, '12':0, '.308':0}, reload:0, reloadIt:null,
+       agach:false, exausto:false, luz:false, inv:[], equip:null, ammo:{'9mm':0, '.38':0, '12':0, '.308':0, '5.56':0, 'flecha':0}, reload:0, reloadIt:null,
        cd:0, kills:0, dead:false, route:[], act:null, mvx:0, mvz:0, swayX:0, swayY:0, recoil:0, cam:null, panic:0, spread:0.05, surr:0, around:0, wet:0, pend:null, shoveT:0, dragged:false, view:CFG.view, aim:false, aimK:0, climb:null, hitT:0, crossKey:'', y:home.levels[0], vy:0, ground:home.levels[0], land:0, airSpd:0, bob:0, stepT:0.5, eye:1.65};
   if (hitAny(P.x, P.z, 0.4, P.y + 0.05)){ P.x = home.dpx - home.dnx * 1.0; P.z = home.dpz - home.dnz * 1.0; }
   buildViewModel(); pm = buildPlayerModel(); initParts(); initRain(); rainK = 0; rainOn = false; rainT = 20;
-  addItem('espingarda'); P.inv[0].mag = 6; P.inv[0].sil = true; P.ammo['12'] = 36;   // espingarda com silenciador (para testar)
-  addItem('pistola'); P.inv[1].mag = 15; P.ammo['9mm'] = 15;
+  if (typeof NET !== 'undefined' && NET.on){ addItem('pistola'); P.inv[0].mag = 15; P.ammo['9mm'] = 30; }   // na sala todo mundo começa com uma pistola comum
+  else { addItem('espingarda'); P.inv[0].mag = 6; P.inv[0].sil = true; P.ammo['12'] = 36;   // solo: espingarda com silenciador (para testar)
+    addItem('pistola'); P.inv[1].mag = 15; P.ammo['9mm'] = 15; }
   addItem('taco'); addItem('agua'); addItem('salg');
   gameMin = (CFG.startH === undefined ? 8 : CFG.startH) * 60;
   spawnAnimals();
@@ -4551,7 +4627,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-1';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-2';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
@@ -4667,7 +4743,7 @@ function netInitTracking(){
 function netMyState(){
   const w = P.equip ? P.equip.id : 'punhos', air = P.y > P.ground + 0.05 || !!P.climb;
   const fl = (P.agach ? 1 : 0) | (P.aim ? 2 : 0) | (air ? 4 : 0) | (P.luz ? 8 : 0) | (P.reload > 0 ? 16 : 0) | (P.dead ? 32 : 0) | (P.act ? 64 : 0) | (P.shoveT > 0 ? 128 : 0) | (P.kick ? 256 : 0);
-  const m = {t:'p', n:NET.name, x:r2(P.x), y:r2(P.y), z:r2(P.z), yw:r2(P.yaw), pt:r2(P.pitch), fl, w, sl:P.equip && P.equip.sil ? 1 : 0, hp:Math.round(P.vida), sh:NET.sh, sw:NET.sw, hs:CFG.shoulder === 'esquerdo' ? -1 : 1};
+  const m = {t:'p', n:NET.name, x:r2(P.x), y:r2(P.y), z:r2(P.z), yw:r2(P.yaw), pt:r2(P.pitch), fl, w, sl:P.equip && (P.equip.sil || ITEMS[P.equip.id].mudo) ? 1 : 0, hp:Math.round(P.vida), sh:NET.sh, sw:NET.sw, hs:CFG.shoulder === 'esquerdo' ? -1 : 1};
   if (P.car && !P.pass){ const v = P.car; m.car = [VEH.indexOf(v), r2(v.x), r2(v.y), r2(v.z), r2(v.yaw), r2(v.pitch), r2(v.spd)]; }
   else if (P.car){ m.rd = [VEH.indexOf(P.car), P.seat]; }
   if (NET.noise){ m.nz = [r2(NET.noise[0]), r2(NET.noise[1]), r2(NET.noise[2])]; NET.noise = null; }
@@ -4977,6 +5053,7 @@ function netRespawn(){
   const alive = [...NET.peers.values()].filter(p => p.st && !(p.st.fl & 32) && p.rp);
   if (alive.length){ const p = alive[0]; P.x = p.rp.x + 1.2; P.z = p.rp.z; P.y = groundAt(P.x, P.z, 0.3, p.rp.y + 1.5); }
   P.ground = P.y; P.vy = 0; P.dead = false; P.dragged = false; P.vida = 70; P.sang = 0; P.infect = false; P.febre = false; P.fome = Math.max(P.fome, 50); P.sede = Math.max(P.sede, 50); P.panic = 0; P.car = null;
+  if (!P.inv.some(it => ITEMS[it.id] && ITEMS[it.id].fogo)){ addItem('pistola'); const pi = P.inv.find(it => it.id === 'pistola'); if (pi) pi.mag = 15; P.ammo['9mm'] = (P.ammo['9mm'] || 0) + 15; }
   $('#dead').style.display = 'none'; running = true; paused = false; lock();
   log('Você renasceu perto dos amigos.', '#9fd4ff');
 }
