@@ -531,7 +531,7 @@ function hT(x, z){
     const ax = Math.abs(x); if (ax < 15){ const k = ax < 6 ? 1 : 1 - (ax - 6) / 9; h += (Math.min(h, d * 0.16) - h) * k; }
   } else { const d = z - SB, s = Math.min(1, d / 30); h = s * (2.5 * fbm((x + SEEDX) * 0.02, (z + SEEDZ) * 0.02) + 1.0 * fbm(x * 0.06, z * 0.06)); }
   for (const f of flats){ const dd = Math.max(Math.abs(x - f.x) - f.hw, Math.abs(z - f.z) - f.hd); if (dd < 8){ const k = dd <= 0 ? 1 : 1 - dd / 8; h = h * (1 - k) + f.y * k; } }
-  return h;
+  return railCut(h, x, z);
 }
 const terrainAt = (x, z) => (z > NB && z < SB) ? (HF && x > HF_X0 && x < HF_X1 ? hfAt(x, z) : 0) : hT(x, z);
 function buildTerrain(z1, z2){
@@ -1104,6 +1104,7 @@ function buildPark(){
 }
 
 function buildTree(x, z, kind, y0){
+  if (RAILP && onRail(x, z, 1.6)) return;   // nada de árvore no meio do trilho
   const s = R(0.8, 1.35); y0 = y0 || 0;
   if (kind === 'pine'){
     S(GCY, x, y0 + 1.0 * s, z, 0.35 * s, 2 * s, 0.35 * s, 0x4a3524);
@@ -1162,14 +1163,14 @@ function buildBosque(bx, bz){
 }
 // ---- rodovias ----
 function buildHighway(zc, sg){
-  const L = 40, conn = [-120, 0, 120].filter(x => x > -TOWN && x < TOWN).concat([FOREST_X + 60, -(FOREST_X + 60)]);
+  const L = 40, rx = RAILP ? railCrossX(zc) : [], conn = [-120, 0, 120].filter(x => x > -TOWN && x < TOWN).concat(rx);
   for (let x = WX1 + L / 2; x < WX2; x += L){
     pushGeo(chunkOf(x, zc), GB5, x, 0.012, zc, L + 0.2, 0.024, 13, 0x434347, 0, 0, 0);
     for (let q = x - L / 2 + 3; q < x + L / 2; q += 7){ pushGeo(chunkOf(q, zc), GB5, q, 0.03, zc - 3.2, 3, 0.01, 0.15, 0xe8e8e0, 0, 0, 0); pushGeo(chunkOf(q, zc), GB5, q, 0.03, zc + 3.2, 3, 0.01, 0.15, 0xe8e8e0, 0, 0, 0); }
     pushGeo(chunkOf(x, zc), GB5, x, 0.03, zc - 0.12, L, 0.01, 0.1, 0xd8b830, 0, 0, 0); pushGeo(chunkOf(x, zc), GB5, x, 0.03, zc + 0.12, L, 0.01, 0.1, 0xd8b830, 0, 0, 0);
     for (const side of [-1, 1]){
       const gz = zc + side * 6.9;
-      if (conn.some(c => Math.abs(c - x) < L / 2 + 6) && (side === -sg || Math.abs(Math.abs(x) - (FOREST_X + 60)) < L)){
+      if (conn.some(c => Math.abs(c - x) < L / 2 + 6) && (side === -sg || rx.some(c => Math.abs(c - x) < L))){
         for (const [a, b] of [[x - L / 2, x + L / 2]]){ let s0 = a; for (const c of conn){ if (c > a - 6 && c < b + 6){ if (c - 6 > s0) boxZ(s0, c - 6, 0.35, 0.75, gz - 0.06, gz + 0.06, 0x9aa0a6, true); s0 = c + 6; } } if (b > s0) boxZ(s0, b, 0.35, 0.75, gz - 0.06, gz + 0.06, 0x9aa0a6, true); }
       } else boxZ(x - L / 2, x + L / 2, 0.35, 0.75, gz - 0.06, gz + 0.06, 0x9aa0a6, true);
       if (Math.abs(x % 80) < 1) S(GB, x, 0.3, gz, 0.12, 0.6, 0.12, 0x6a6a6a);
@@ -1177,7 +1178,7 @@ function buildHighway(zc, sg){
     roadSegs.push({x1:x - L / 2, x2:x + L / 2, z1:zc - 6.5, z2:zc + 6.5});
   }
   for (let i = 0; i < (SMALL ? 18 : 30); i++){ const x = R(WX1 + 10, WX2 - 10); if (conn.some(c => Math.abs(c - x) < 8)) continue; buildCar(x, zc + pick([-4.5, -1.6, 1.6, 4.5]), false); }
-  for (let j = 0; j < 2; j++){ const x0 = R(WX1 + 40, WX2 - 40); for (let k = 0; k < 5; k++){ const x = x0 + k * 4.6 + R(-0.5, 0.5); if (Math.abs(Math.abs(x) - (FOREST_X + 60)) > 5) buildCar(x, zc + pick([-4.5, -1.6, 1.6, 4.5]), false); } }
+  for (let j = 0; j < 2; j++){ const x0 = R(WX1 + 40, WX2 - 40); for (let k = 0; k < 5; k++){ const x = x0 + k * 4.6 + R(-0.5, 0.5); if (rx.every(c => Math.abs(c - x) > 6)) buildCar(x, zc + pick([-4.5, -1.6, 1.6, 4.5]), false); } }
   makeSign('RODOVIA ' + (sg < 0 ? 'BR-101 NORTE' : 'BR-101 SUL'), 0x1f6a3a, 20, 4.2, zc - sg * 7.4, 6, sg < 0 ? 0 : Math.PI);
   S(GB, 17.2, 2.0, zc - sg * 7.4, 0.15, 4, 0.15, 0x6a6a6a); S(GB, 22.8, 2.0, zc - sg * 7.4, 0.15, 4, 0.15, 0x6a6a6a);
 }
@@ -1188,7 +1189,7 @@ function planWild(){
   const cx = SMALL ? [-130, 120] : [-270, -150, 140, 260];
   for (const x of cx){ const c = {x:x + R(-15, 15), z:NB - 17}; CAVES.push(c); flats.push({x:c.x, z:c.z, hw:13, hd:11, y:0}); }
   flats.push({x:0, z:WZ1 + 18, hw:8, hd:8, y:(NB - (WZ1 + 18)) * 0.16});
-  LAKE = {x:R(-150, 150), z:R(SB + 48, WZ2 - 40), hw:R(18, 27), hd:R(10, 15)}; flats.push({x:LAKE.x, z:LAKE.z, hw:LAKE.hw + 2, hd:LAKE.hd + 2, y:0});
+  LAKE = {x:R(-150, 150), z:R(SB + 48, WZ2 - 40), hw:R(18, 27), hd:R(10, 15)}; for (let k = 0; k < 40 && railDist(LAKE.x, LAKE.z) < 45; k++){ LAKE.x = R(-TOWN, TOWN); LAKE.z = R(SB + 48, WZ2 - 40); } flats.push({x:LAKE.x, z:LAKE.z, hw:LAKE.hw + 2, hd:LAKE.hd + 2, y:0});
   FPATHS = []; FIELDS = [];
   const ov = (a, b, m) => a.x1 - m < b.x2 && a.x2 + m > b.x1 && a.z1 - m < b.z2 && a.z2 + m > b.z1;
   const lakeR = {x1:LAKE.x - LAKE.hw - 6, x2:LAKE.x + LAKE.hw + 6, z1:LAKE.z - LAKE.hd - 6, z2:LAKE.z + LAKE.hd + 6};
@@ -1199,7 +1200,7 @@ function planWild(){
     const q = Math.random() < 0.45 ? 0 : RI(1, 3), hw = q % 2 ? 20 : 25, hd = q % 2 ? 25 : 20;
     const x = R(WX1 + hw + 8, WX2 - hw - 8), z = R(SB + 16 + hd, WZ2 - hd - 6);
     const box = {x1:x - hw, x2:x + hw, z1:z - hd, z2:z + hd};
-    if (ov(box, lakeR, 4) || FARMS.some(f => ov(box, f.box, 14))) continue;
+    if (ov(box, lakeR, 4) || FARMS.some(f => ov(box, f.box, 14)) || [[box.x1, box.z1], [box.x2, box.z1], [box.x1, box.z2], [box.x2, box.z2], [x, z]].some(q => railDist(q[0], q[1]) < 12) || railDist(x, z) < Math.max(hw, hd) + 10) continue;
     // caminho: sai pela porteira, contorna a fazenda se precisar e vai até a estrada
     const d = rotP(q, 0, -1), g = rotP(q, 0, -21), G = [x + g[0], z + g[1]], P1 = [G[0] + d[0] * 5, G[1] + d[1] * 5], pts = [G, P1];
     if (d[1] > 0.5){ const sd = x > 0 ? -1 : 1; pts.push([x + sd * (hw + 6), P1[1]]); }
@@ -1216,7 +1217,7 @@ function planWild(){
     const w = R(18, 42), dd = R(14, 30), q = RI(0, 3), hw = (q % 2 ? dd : w) / 2, hd = (q % 2 ? w : dd) / 2;
     const x = R(WX1 + hw + 6, WX2 - hw - 6), z = R(SB + 18 + hd, WZ2 - hd - 5);
     const box = {x1:x - hw, x2:x + hw, z1:z - hd, z2:z + hd};
-    if (ov(box, lakeR, 3) || FARMS.some(f => ov(box, f.box, 5)) || FIELDS.some(c => ov(box, c.box, R(3, 9))) || FPATHS.some(r => ov(box, r, 1.5))) continue;
+    if (ov(box, lakeR, 3) || FARMS.some(f => ov(box, f.box, 5)) || FIELDS.some(c => ov(box, c.box, R(3, 9))) || FPATHS.some(r => ov(box, r, 1.5)) || railDist(x, z) < Math.max(hw, hd) + 8 || [[box.x1, box.z1], [box.x2, box.z1], [box.x1, box.z2], [box.x2, box.z2]].some(q => railDist(q[0], q[1]) < 8)) continue;
     FIELDS.push({x, z, q, w, d:dd, box, y:hT(x, z), tipo:pick(['milho', 'milho', 'cana', 'soja', 'soja', 'trigo', 'cafe'])});
   }
   for (const c of FIELDS) flats.push({x:c.x, z:c.z, hw:(c.box.x2 - c.box.x1) / 2 + 1, hd:(c.box.z2 - c.box.z1) / 2 + 1, y:c.y});
@@ -1364,10 +1365,10 @@ function buildWild(){
   // serra: pinheiros e pedras nas encostas, estrada de terra até o mirante
   for (let k = 0, m = 0; k < 4000 && m < (SMALL ? 320 : 650); k++){
     const x = R(WX1 + 4, WX2 - 4), z = R(WZ1 + 4, NB - 4), h = hT(x, z);
-    if (h > 24 || Math.abs(x) < 9 || CAVES.some(c => Math.hypot(x - c.x, z - c.z) < 16) || hitAny(x, z, 1.4, h)) continue;
+    if (h > 24 || Math.abs(x) < 9 || onRail(x, z, 4) || CAVES.some(c => Math.hypot(x - c.x, z - c.z) < 16) || hitAny(x, z, 1.4, h)) continue;
     buildTree(x, z, Math.random() < 0.85 ? 'pine' : 'leaf', h - 0.2); m++;
   }
-  for (let k = 0; k < (SMALL ? 70 : 140); k++){ const x = R(WX1, WX2), z = R(WZ1, NB - 6), h = hT(x, z); if (Math.abs(x) < 8) continue; const s = R(0.8, 2.2); S(GIC, x, h + 0.2, z, s, s * 0.7, s, pick([0x6b6b66, 0x5a5a55, 0x7a766e]), R(0, 3)); }
+  for (let k = 0; k < (SMALL ? 70 : 140); k++){ const x = R(WX1, WX2), z = R(WZ1, NB - 6), h = hT(x, z); if (Math.abs(x) < 8 || onRail(x, z, 3)) continue; const s = R(0.8, 2.2); S(GIC, x, h + 0.2, z, s, s * 0.7, s, pick([0x6b6b66, 0x5a5a55, 0x7a766e]), R(0, 3)); }
   for (let z = NB; z > WZ1 + 10; z -= 6){ const h = hT(0, z); pushGeo(chunkOf(0, z), GB, 0, h + 0.04, z - 3, 5, 0.08, 6.3, 0x6a5338, 0, 0, 0); }
   roadSegs.push({x1:-2.5, x2:2.5, z1:WZ1 + 10, z2:NB});
   const ty = (NB - (WZ1 + 18)) * 0.16, tz = WZ1 + 18;
@@ -1398,10 +1399,10 @@ function buildWild(){
   for (let k = 0, m = 0; k < 9000 && m < (SMALL ? 650 : 1400); k++){
     const x = R(WX1 + 4, WX2 - 4), z = R(SB + 6, WZ2 - 4), h = hT(x, z);
     if (Math.abs(x - LAKE.x) < LAKE.hw + 4 && Math.abs(z - LAKE.z) < LAKE.hd + 4) continue;
-    if (FARMS.some(f => inR(x, z, f.box, 3)) || FIELDS.some(c => inR(x, z, c.box, 2.5)) || FPATHS.some(r => inR(x, z, r, 1.2)) || Math.abs(z - (SB + 9)) < 4 || hitAny(x, z, 1.3, h)) continue;
+    if (FARMS.some(f => inR(x, z, f.box, 3)) || FIELDS.some(c => inR(x, z, c.box, 2.5)) || FPATHS.some(r => inR(x, z, r, 1.2)) || Math.abs(z - (SB + 9)) < 4 || onRail(x, z, 3) || hitAny(x, z, 1.3, h)) continue;
     buildTree(x, z, Math.random() < 0.55 ? 'leaf' : 'pine', h - 0.15); m++;
   }
-  for (let k = 0; k < (SMALL ? 260 : 520); k++){ const x = R(WX1, WX2), z = R(SB + 4, WZ2), h = hT(x, z); if (FIELDS.some(c => inR(x, z, c.box, 0.5)) || FPATHS.some(r => inR(x, z, r, 0))) continue; S(GIC, x, h + 0.3, z, R(.5, .9), R(.35, .6), R(.5, .9), pick([0x3a5a2a, 0x2f4a24, 0x4a6030]), R(0, 3)); }
+  for (let k = 0; k < (SMALL ? 260 : 520); k++){ const x = R(WX1, WX2), z = R(SB + 4, WZ2), h = hT(x, z); if (FIELDS.some(c => inR(x, z, c.box, 0.5)) || FPATHS.some(r => inR(x, z, r, 0)) || onRail(x, z, 1.5)) continue; S(GIC, x, h + 0.3, z, R(.5, .9), R(.35, .6), R(.5, .9), pick([0x3a5a2a, 0x2f4a24, 0x4a6030]), R(0, 3)); }
 }
 
 // ---- ruas, calçadas, postes ----
@@ -1526,7 +1527,7 @@ function cityBase(x, z){
   const r = Math.hypot(x, z), c = 0.3 + 0.7 * clamp((r - 40) / 90, 0, 1);
   let h = (fbm((x + SEEDX) * 0.0055, (z + SEEDZ) * 0.0055) - 0.33) * 15 * c;
   if (HILL){ const dh = Math.hypot(x - HILL.x, z - HILL.z); h += HILL.h * Math.exp(-(dh * dh) / (2 * HILL.r * HILL.r)); }
-  return Math.max(0, h) * ee;
+  return railCut(Math.max(0, h) * ee, x, z);
 }
 function hfAt(x, z){
   const fx = x - HF_X0, fz = z - NB, i = Math.floor(fx), j = Math.floor(fz);
@@ -1607,6 +1608,7 @@ const LCELL = 16;
 function lotCells(a, fn){ for (let i = Math.floor(a.x1 / LCELL); i <= Math.floor(a.x2 / LCELL); i++) for (let j = Math.floor(a.z1 / LCELL); j <= Math.floor(a.z2 / LCELL); j++) fn(i + ',' + j); }
 function lotFree(a, gap){
   const b = {x1:a.x1 - gap, x2:a.x2 + gap, z1:a.z1 - gap, z2:a.z2 + gap}; let ok = true;
+  for (let x = a.x1; x <= a.x2 + 0.1; x += Math.max(2, (a.x2 - a.x1) / 6)) for (let z = a.z1; z <= a.z2 + 0.1; z += Math.max(2, (a.z2 - a.z1) / 6)) if (railDist(x, z) < 7) return false;
   lotCells(b, k => { if (!ok) return; const L = LGRID.get(k); if (L) for (const l of L) if (b.x1 < l.a.x2 && b.x2 > l.a.x1 && b.z1 < l.a.z2 && b.z2 > l.a.z1){ ok = false; return; } });
   return ok;
 }
@@ -1765,6 +1767,7 @@ function buildHF(){
     }
   }
   for (let o = 0; o < w * h; o++){ const dd = rd[o]; if (dd <= 1.9) d[o] = rh[o] - 0.03; else if (dd < 8 && pd[o] > 0.6){ let k = 1 - (dd - 1.9) / 6.1; k = k * k * (3 - 2 * k); d[o] += (rh[o] - d[o]) * k; } }
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++){ const o = j * w + i; d[o] = railCut(d[o], HF_X0 + i, NB + j); }   // a linha do trem corta o morro
   HF = {w, h, d};
 }
 function buildCityTerrain(){
@@ -1946,7 +1949,7 @@ function buildVacant(w){
 }
 
 function buildWorld(){
-  SEEDX = R(-5000, 5000); SEEDZ = R(-5000, 5000); PROPCARS = [];
+  SEEDX = R(-5000, 5000); SEEDZ = R(-5000, 5000); PROPCARS = []; RDG = null; planRail();
   planWild();
   const gr = new THREE.Mesh(new THREE.PlaneGeometry(WX2 - WX1, SB - NB), new THREE.MeshLambertMaterial({map:TX.grass}));
   gr.rotation.x = -Math.PI / 2; gr.position.set((WX1 + WX2) / 2, -0.06, (NB + SB) / 2); scene.add(gr);
@@ -1971,94 +1974,115 @@ function buildWorld(){
   buildWild(); buildRuins(); namePlaces();
   for (const h of houses) if (h.dpx === undefined) doorInfo(h);
   buildBGrid();
+  for (const c of colliders) if (!c.off && (c.x2 - c.x1) * (c.z2 - c.z1) < 4 && railDist((c.x1 + c.x2) / 2, (c.z1 + c.z2) / 2) < 2.4 && c.h > 0.3 && c.h < 3) c.off = true;   // sobras pequenas em cima da linha
   spawnVehicles(); spawnPropCars(); buildTrain(); if (CFG.quality !== 'baixa') buildGrass();
   buildMapBG();
   finalizeStatic();
   finalizeEnts();
 }
 // ================= FERROVIA, VIADUTO, LUGARES DESTRUÍDOS =================
-let RAILS = [], WRECKS = [], RUINS = [], RAIL_RZ = 0, RAIL_RX = 0, VIADUCT = null;
-const onRail = (x, z, pad) => { for (const r of RAILS){ if (r.h ? (Math.abs(z - r.c) < 2 + pad && x > r.a - pad && x < r.b + pad) : (Math.abs(x - r.c) < 2 + pad && z > r.a - pad && z < r.b + pad)) return true; } return false; };
-// altura do trilho: a linha leste sobe num viaduto por cima da estrada de terra da floresta
-function railH(r, s){
-  if (!r.via) return 0;
-  const d = Math.abs(s - r.via), D0 = 35, D1 = 95, H = 5.5;
-  return d <= D0 ? H : d >= D1 ? 0 : H * (1 - (d - D0) / (D1 - D0));
+let RAILS = [], WRECKS = [], RUINS = [], RAIL_RZ = 0, RAIL_RX = 0, VIADUCT = null, RAILP = null, RDG = null;
+// ---------- traçado da ferrovia: uma volta em curvas pela floresta oeste, pela serra (num corte na rocha), pela floresta leste (viaduto), pela cidade e pela zona rural ----------
+function planRail(){
+  const T = TOWN, RX = RAIL_RX = FOREST_X + 60; RAIL_RZ = HWY_S + 11.5;
+  const DN = NB - WZ1, DS = WZ2 - SB;
+  const C = [[-RX, 0.18 * T], [-RX + 4, -0.3 * T], [-RX + 45, NB - 0.22 * DN], [-0.42 * T, NB - 0.62 * DN], [0.08 * T, NB - 0.72 * DN], [0.48 * T, NB - 0.52 * DN], [RX - 30, NB - 0.2 * DN],
+    [RX, -150], [RX, -75], [RX, 0], [RX, 75], [RX, 150], [0.64 * T, 0.33 * T], [0.26 * T, 0.43 * T], [0.06 * T, SB + 0.33 * DS], [-0.42 * T, SB + 0.27 * DS], [-0.66 * T, 0.4 * T]];
+  for (const c of C) if (Math.abs(c[0]) !== RX){ c[0] += R(-8, 8); c[1] += R(-8, 8); }
+  // Catmull-Rom fechado, depois reamostrado a cada 1 m
+  const raw = [], n = C.length;
+  for (let i = 0; i < n; i++){ const p0 = C[(i - 1 + n) % n], p1 = C[i], p2 = C[(i + 1) % n], p3 = C[(i + 2) % n];
+    for (let t = 0; t < 1; t += 0.01){ const t2 = t * t, t3 = t2 * t, f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3); raw.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]); } }
+  const pts = []; let acc = 0, prev = raw[0]; pts.push({x:prev[0], z:prev[1], s:0});
+  for (let i = 1; i <= raw.length; i++){ const q = raw[i % raw.length]; let d = Math.hypot(q[0] - prev[0], q[1] - prev[1]);
+    while (acc + d >= 1){ const k = (1 - acc) / d; const x = prev[0] + (q[0] - prev[0]) * k, z = prev[1] + (q[1] - prev[1]) * k; pts.push({x, z, s:pts.length}); prev = [x, z]; d = Math.hypot(q[0] - prev[0], q[1] - prev[1]); acc = 0; }
+    acc += d; prev = q; }
+  for (let i = 0; i < pts.length; i++){ const a = pts[(i - 1 + pts.length) % pts.length], b = pts[(i + 1) % pts.length]; pts[i].yaw = Math.atan2(b.x - a.x, b.z - a.z);
+    const p = pts[i], dz = Math.abs(p.z); p.y = (Math.abs(p.x - RX) < 1 && dz < 95) ? (dz <= 35 ? 5.5 : 5.5 * (1 - (dz - 35) / 60)) : 0; }
+  RAILP = {pts, L:pts.length};
+  // campo de distância até o trilho (2 m), usado para cortar o morro e para saber se algo está em cima da linha
+  const G = 2, W = Math.ceil((WX2 - WX1) / G) + 1, H = Math.ceil((WZ2 - WZ1) / G) + 1, d = new Float32Array(W * H).fill(99), RR = 60;
+  for (const p of pts){ const i0 = Math.max(0, Math.floor((p.x - RR - WX1) / G)), i1 = Math.min(W - 1, Math.ceil((p.x + RR - WX1) / G)), j0 = Math.max(0, Math.floor((p.z - RR - WZ1) / G)), j1 = Math.min(H - 1, Math.ceil((p.z + RR - WZ1) / G));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++){ const dd = Math.hypot(WX1 + i * G - p.x, WZ1 + j * G - p.z); const o = j * W + i; if (dd < d[o]) d[o] = dd; } }
+  RDG = {d, W, H, G};
+  RAILS = [{curve:true}];
 }
+function railDist(x, z){
+  if (!RDG) return 99; const fx = (x - WX1) / RDG.G, fz = (z - WZ1) / RDG.G, i = Math.floor(fx), j = Math.floor(fz);
+  if (i < 0 || j < 0 || i >= RDG.W - 1 || j >= RDG.H - 1) return 99; const u = fx - i, v = fz - j, D = RDG.d, o = j * RDG.W + i;
+  return D[o] * (1 - u) * (1 - v) + D[o + 1] * u * (1 - v) + D[o + RDG.W] * (1 - u) * v + D[o + RDG.W + 1] * u * v;
+}
+const onRail = (x, z, pad) => railDist(x, z) < 2 + pad;
+const railCut = (h, x, z) => { if (!RDG) return h; const d = railDist(x, z); return d >= 60 ? h : Math.min(h, Math.max(0, d - 3.4) * 1.15); };
+function railH(r, s){ const P = RAILP.pts; return P[((Math.round(s) % P.length) + P.length) % P.length].y; }
+// onde a linha cruza uma rodovia (para abrir a mureta e pôr a placa)
+function railCrossX(zc){ const out = [], P = RAILP.pts; for (let i = 0; i < P.length; i++){ const a = P[i], b = P[(i + 1) % P.length]; if ((a.z - zc) * (b.z - zc) <= 0 && a.z !== b.z) out.push(a.x + (b.x - a.x) * (zc - a.z) / (b.z - a.z)); } return out; }
 // restos de zumbi despedaçados (enfeite, sem colisão)
 function remains(x, z, n, y0){
   const y = y0 === undefined ? terrainAt(x, z) : y0, skin = pick([0x7a8a6a, 0x6e7e5e, 0x8a8a70]), sh = pick(SHIRT), pa = pick(PANTS);
-  S(GB, x, y + 0.015, z, R(1.2, 2.4), 0.012, R(0.9, 1.8), 0x3a0505, R(0, 3));               // poça de sangue seco
+  S(GB, x, y + 0.015, z, R(1.2, 2.4), 0.012, R(0.9, 1.8), 0x3a0505, R(0, 3));
   const parts = [[0.42, 0.22, 0.6, sh], [0.24, 0.24, 0.24, skin], [0.12, 0.12, 0.5, sh], [0.12, 0.12, 0.45, skin], [0.16, 0.16, 0.7, pa], [0.15, 0.15, 0.6, pa]];
   for (let i = 0; i < n; i++){ const p = parts[i % parts.length], a = R(0, 6.28), d = i ? R(0.3, 1.6) : 0;
     S(GB, x + Math.cos(a) * d, y + p[1] / 2 + 0.01, z + Math.sin(a) * d, p[0], p[1], p[2], p[3], R(0, 6.28));
     if (Math.random() < 0.6) S(GB, x + Math.cos(a) * d + R(-0.2, 0.2), y + 0.02, z + Math.sin(a) * d + R(-0.2, 0.2), R(0.25, 0.6), 0.01, R(0.25, 0.6), 0x4a0808, R(0, 3)); }
 }
-function railSeg(h, c, a, b, via){ const r = {h, c, a, b, via}; RAILS.push(r); return r; }
 function buildRails(){
-  RAILS = []; WRECKS = []; RUINS = [];
-  const RZ = RAIL_RZ = HWY_S + 11.5, RX = RAIL_RX = FOREST_X + 60;
-  railSeg(true, RZ, WX1 + 3, WX2 - 3);            // linha sul (corta o mapa inteiro)
-  railSeg(true, -RZ, -RX, RX);                    // linha norte
-  railSeg(false, RX, -RZ, RZ, 0.0001);            // linha leste (com viaduto)
-  railSeg(false, -RX, -RZ, RZ);                   // linha oeste
-  for (const r of RAILS){
-    for (let s = r.a; s < r.b; s += 1){
-      const sm = s + 0.5, y = railH(r, sm), x = r.h ? sm : r.c, z = r.h ? r.c : sm, ry = r.h ? 0 : Math.PI / 2;
-      // dormente
-      S(GB, x, y + 0.1, z, 0.24, 0.12, 2.5, 0x4a3626, r.h ? 0 : Math.PI / 2);
-      if (Math.floor(s) % 2 === 0){
-        // trilhos (aço) e brita a cada 2 m
-        for (const o of [-0.72, 0.72]) S(GB, r.h ? x + 0.5 : x + o, y + 0.2, r.h ? z + o : z + 0.5, r.h ? 2.02 : 0.08, 0.1, r.h ? 0.08 : 2.02, 0x8a8a8e);
-        if (!y) S(GB5, r.h ? x + 0.5 : x, 0.02, r.h ? z : z + 0.5, r.h ? 2.02 : 3.4, 0.05, r.h ? 3.4 : 2.02, 0x6e665c);
-      }
-    }
-    // viaduto: aterro nas rampas, laje com pilares no meio e mureta dos dois lados
-    if (r.via){
-      for (let s = r.a; s < r.b; s += 2){
-        const sm = s + 1, y = railH(r, sm), x = r.c; if (y <= 0.05) continue;
-        const deck = y >= 5.49;
-        if (!deck){ S(GB, x, y / 2, sm, 3.8, y, 2.02, 0x7a7068); for (let k = 0; k < 4; k++){ const zz = s + k * 0.5 + 0.25, yy = railH(r, zz); addPlat({x1:x - 1.8, x2:x + 1.8, z1:zz - 0.26, z2:zz + 0.26, top:yy}); }
-          for (const o of [-1.9, 1.9]) addBox(x + o, (y + 0.9) / 2, sm, 0.14, y + 0.9, 2.02, 0x8a8278, true); }
-        else { addBox(x, y - 0.35, sm, 3.8, 0.7, 2.02, 0x8a8a84, true); if (Math.round(sm) % 10 === 0 && Math.abs(sm) > 4) for (const o of [-1.3, 1.3]) addBox(x + o, (y - 0.7) / 2, sm, 0.6, y - 0.7, 0.6, 0x7a7a74, true);
-          for (const o of [-1.85, 1.85]) addBox(x + o, y + 0.45, sm, 0.12, 0.9, 2.02, 0x9a9a92, true); }
-      }
-      makeSign('VIADUTO DA SERRA', 0x3a3a3a, RX + 2.2, 4.6, 0, 3.6, Math.PI / 2); VIADUCT = {x:RX, L:95};
-    }
+  WRECKS = []; RUINS = [];
+  const P = RAILP.pts, RX = RAIL_RX, NN = P.length;
+  for (let i = 0; i < NN; i++){
+    const p = P[i], q = P[(i + 1) % NN], y = p.y, gy = y > 0.05 ? y : terrainAt(p.x, p.z), cx = (p.x + q.x) / 2, cz = (p.z + q.z) / 2, yaw = Math.atan2(q.x - p.x, q.z - p.z), cs = Math.cos(yaw), sn = Math.sin(yaw);
+    S(GB, p.x, gy + 0.1, p.z, 2.5, 0.12, 0.24, 0x4a3626, yaw);                                         // dormente
+    for (const o of [-0.72, 0.72]) S(GB, cx + cs * o, gy + 0.2, cz - sn * o, 0.08, 0.1, 1.04, 0x8a8a8e, yaw);   // trilhos
+    if (i % 2 === 0 && y <= 0.05) S(GB5, cx, gy + 0.02, cz, 3.4, 0.05, 2.05, 0x6e665c, yaw);                  // brita
   }
-  // passagens de nível (placa em X) onde a linha cruza estradas
-  const cross = (x, z, ry) => { S(GB, x, 1.6, z, 0.12, 3.2, 0.12, 0x6a6a6a); S(GB, x, 3.0, z, 1.3, 0.2, 0.05, 0xf0f0f0, ry, 0.8); S(GB, x, 3.0, z, 1.3, 0.2, 0.05, 0xd02020, ry, -0.8); };
-  for (const sg of [-1, 1]){ if (sg < 0){ cross(sg * RX + 3, 3.5, 0); cross(sg * RX - 3, -3.5, 0); } for (const zc of [HWY_N, HWY_S]){ cross(sg * RX + 3, zc + 8, 0); cross(sg * RX - 3, zc - 8, 0); } }
-  // estações
-  const station = (x, z, alongX, nm, side) => {
-    const L = 34, W = 3.2, px = alongX ? x : x + side * 3.6, pz = alongX ? z + side * 3.6 : z, y0 = terrainAt(px, pz);
-    addBox(px, y0 + 0.45, pz, alongX ? L : W, 0.9, alongX ? W : L, 0xa8a49a, true);
-    for (const k of [-12, -4, 4, 12]) for (const o of [-1.2, 1.2]){ const qx = alongX ? px + k : px + o, qz = alongX ? pz + o : pz + k; S(GB, qx, y0 + 2.2, qz, 0.15, 2.6, 0.15, 0x5a5a5a); }
-    addBox(px, y0 + 3.6, pz, alongX ? 28 : 3.4, 0.15, alongX ? 3.4 : 28, 0x7a2a22, false);
-    for (const k of [-8, 0, 8]){ const qx = alongX ? px + k : px, qz = alongX ? pz : pz + k; S(GB, qx, y0 + 1.15, qz, alongX ? 1.8 : 0.45, 0.1, alongX ? 0.45 : 1.8, 0x6a4a2a); }
-    makeSign(nm, 0x1a3a6a, alongX ? px : px + side * 1.7, y0 + 3.1, alongX ? pz + side * 1.7 : pz, 5, alongX ? (side > 0 ? Math.PI : 0) : (side > 0 ? -Math.PI / 2 : Math.PI / 2));
-    // bilheteria
-    const bx = alongX ? px + 13 : px + side * 4.8, bz = alongX ? pz + side * 4.4 : pz + 13;
+  // viaduto no trecho reto da floresta leste (por cima da estrada de terra)
+  const vx = z => { let b = P[0], bd = 1e9; for (const p of P) if (Math.abs(p.x - RX) < 8){ const d = Math.abs(p.z - z); if (d < bd){ bd = d; b = p; } } return b.x; };
+  for (let s = -95; s < 95; s += 2){
+    const sm = s + 1, dz = Math.abs(sm), y = dz <= 35 ? 5.5 : 5.5 * (1 - (dz - 35) / 60), x = vx(sm); if (y <= 0.05) continue;
+    if (y < 5.49){ S(GB, x, y / 2, sm, 3.8, y, 2.02, 0x7a7068); for (let k = 0; k < 4; k++){ const zz = s + k * 0.5 + 0.25, az = Math.abs(zz), yy = az <= 35 ? 5.5 : Math.max(0, 5.5 * (1 - (az - 35) / 60)); addPlat({x1:x - 1.8, x2:x + 1.8, z1:zz - 0.26, z2:zz + 0.26, top:yy}); }
+      for (const o of [-1.9, 1.9]) addBox(x + o, (y + 0.9) / 2, sm, 0.14, y + 0.9, 2.02, 0x8a8278, true); }
+    else { addBox(x, y - 0.35, sm, 3.8, 0.7, 2.02, 0x8a8a84, true); if (Math.round(sm) % 10 === 0 && Math.abs(sm) > 4) for (const o of [-1.3, 1.3]) addBox(x + o, (y - 0.7) / 2, sm, 0.6, y - 0.7, 0.6, 0x7a7a74, true);
+      for (const o of [-1.85, 1.85]) addBox(x + o, y + 0.45, sm, 0.12, 0.9, 2.02, 0x9a9a92, true); }
+  }
+  makeSign('VIADUTO DA SERRA', 0x3a3a3a, RX + 2.2, 4.6, 0, 3.6, Math.PI / 2); VIADUCT = {x:RX, L:95};
+  // passagens de nível nas rodovias e na estrada rural
+  const cross = (x, z) => { S(GB, x, 1.6, z, 0.12, 3.2, 0.12, 0x6a6a6a); S(GB, x, 3.0, z, 1.3, 0.2, 0.05, 0xf0f0f0, 0, 0.8); S(GB, x, 3.0, z, 1.3, 0.2, 0.05, 0xd02020, 0, -0.8); };
+  for (const zc of [HWY_N, HWY_S]) for (const x of railCrossX(zc)){ cross(x + 4, zc + 8); cross(x - 4, zc - 8); }
+  // estações ao longo da linha (plataforma em pedaços acompanhando a curva)
+  const station = (s0, nm, side) => {
+    const p0 = P[s0], y0 = terrainAt(p0.x, p0.z);
+    for (let k = -16; k <= 16; k += 2){ const p = P[((s0 + k) % NN + NN) % NN], cs = Math.cos(p.yaw), sn = Math.sin(p.yaw), px = p.x + cs * side * 3.4, pz = p.z - sn * side * 3.4;
+      S(GB, px, y0 + 0.45, pz, 3.2, 0.9, 2.1, 0xa8a49a, p.yaw); addCol({x1:px - 1.3, x2:px + 1.3, z1:pz - 1.3, z2:pz + 1.3, h:y0 + 0.9});
+      if (Math.abs(k) <= 12){ if (k % 4 === 0) S(GB, px, y0 + 2.25, pz, 0.15, 2.7, 0.15, 0x5a5a5a); S(GB, px, y0 + 3.6, pz, 3.4, 0.15, 2.1, 0x7a2a22, p.yaw); }
+      if (k === -6 || k === 6) S(GB, px + cs * side * 0.9, y0 + 1.15, pz - sn * side * 0.9, 0.45, 0.1, 1.8, 0x6a4a2a, p.yaw); }
+    const cs = Math.cos(p0.yaw), sn = Math.sin(p0.yaw), px = p0.x + cs * side * 3.4, pz = p0.z - sn * side * 3.4;
+    makeSign(nm, 0x1a3a6a, px + cs * side * 1.75, y0 + 3.1, pz - sn * side * 1.75, 5, p0.yaw + (side > 0 ? -Math.PI / 2 : Math.PI / 2));
+    const bx = px + cs * side * 4.6, bz = pz - sn * side * 4.6;
     addBox(bx, y0 + 1.4, bz, 3.2, 2.8, 3.2, 0xc8b890, true); addBox(bx, y0 + 2.9, bz, 3.6, 0.2, 3.6, 0x5a2a22, false);
-    addContainer(bx - (alongX ? 0 : side * 1.9), bz - (alongX ? side * 1.9 : 0), 'estacao', 1.8, y0); addContainer(px, pz, 'estacao', 2.0, y0 + 0.9);
-    remains(px + R(-8, 8) * (alongX ? 1 : 0.2), pz + R(-8, 8) * (alongX ? 0.2 : 1), RI(3, 6), y0 + 0.9);
-    RUINS.push({x:px, z:pz, nm});
+    addContainer(bx - cs * side * 1.9, bz + sn * side * 1.9, 'estacao', 1.8, y0); addContainer(px, pz, 'estacao', 2.0, y0 + 0.9);
+    remains(px + R(-6, 6), pz + R(-6, 6), RI(3, 6), y0 + 0.9);
+    RUINS.push({x:px, z:pz, nm, st:true, s:s0});
   };
-  station(SMALL ? -60 : -80, RZ, true, 'ESTAÇÃO CENTRAL', 1);
-  station(RX, SMALL ? -140 : -170, false, 'ESTAÇÃO DA SERRA', 1);
-  station(-RX, SMALL ? 120 : 150, false, 'PARADA OESTE', -1);
-  // trem abandonado e um vagão descarrilado na linha norte
-  { const x0 = R(RX + 30, WX2 - 85), z = RZ;
-    addBox(x0, 1.9, z, 14, 3.2, 3.0, 0x8a2a1a, true); addBox(x0 + 4.5, 3.9, z, 4.5, 0.9, 3.0, 0x6a1a10, true); S(GB, x0 - 7.05, 2.4, z, 0.1, 1.0, 2.2, 0xfff4c0);
-    makeSign('RFFSA', 0x6a1a10, x0, 2.6, z - 1.52, 3, 0);
+  const near = (x, z) => { let b = 0, bd = 1e9; P.forEach((p, i) => { const d = Math.hypot(p.x - x, p.z - z); if (d < bd){ bd = d; b = i; } }); return b; };
+  station(near(0.26 * TOWN, 0.43 * TOWN), 'ESTAÇÃO CENTRAL', 1);
+  station(near(0.08 * TOWN, NB - 0.72 * (NB - WZ1)), 'ESTAÇÃO DA SERRA', 1);
+  station(near(RX, 150), 'PARADA DA FLORESTA', 1);
+  station(near(-0.42 * TOWN, SB + 0.27 * (WZ2 - SB)), 'ESTAÇÃO RURAL', -1);
+  station(near(-RX, -0.3 * TOWN), 'PARADA OESTE', 1);
+  // trem abandonado num desvio na zona rural (trilho próprio, reto)
+  { let x0 = 0, z = 0; for (let k = 0; k < 200; k++){ x0 = R(WX1 + 60, WX2 - 120); z = SB + R(30, 60); let ok = true; for (let t = -10; t < 80; t += 5) if (railDist(x0 + t, z) < 14 || Math.abs(terrainAt(x0 + t, z)) > 1.5) ok = false; if (ok) break; }
+    for (let t = -12; t < 82; t += 1){ S(GB, x0 + t, terrainAt(x0 + t, z) + 0.1, z, 0.24, 0.12, 2.5, 0x4a3626); if (t % 2 === 0) for (const o of [-0.72, 0.72]) S(GB, x0 + t + 1, terrainAt(x0 + t, z) + 0.2, z + o, 2.02, 0.1, 0.08, 0x7a6a5a); }
+    const y = terrainAt(x0, z);
+    addBox(x0, y + 1.9, z, 14, 3.2, 3.0, 0x8a2a1a, true); addBox(x0 + 4.5, y + 3.9, z, 4.5, 0.9, 3.0, 0x6a1a10, true); S(GB, x0 - 7.05, y + 2.4, z, 0.1, 1.0, 2.2, 0xfff4c0);
+    makeSign('RFFSA', 0x6a1a10, x0, y + 2.6, z - 1.52, 3, 0);
     let x = x0 + 8; for (let k = 0; k < 4; k++){ x += 13;
-      if (k === 2){ addBox(x + 1, 1.45, z - 3.8, 12, 2.9, 2.8, 0x4a3a2a, true); S(GB, x + 1, 0.02, z - 2.4, 6, 0.03, 4, 0x2a2420, 0.2); addContainer(x + 1, z - 5.6, 'vagao', 2.4); remains(x - 3, z - 6.5, 5, 0.03); }
-      else { addBox(x, 1.75, z, 12, 2.8, 2.8, pick([0x5a4a3a, 0x3a4a5a, 0x6a5a3a]), true); addContainer(x, z + 2.2, 'vagao', 2.2); addContainer(x, z - 2.2, 'vagao', 2.2); }
+      if (k === 2){ addBox(x + 1, y + 1.45, z - 3.8, 12, 2.9, 2.8, 0x4a3a2a, true); S(GB, x + 1, y + 0.02, z - 2.4, 6, 0.03, 4, 0x2a2420, 0.2); addContainer(x + 1, z - 5.6, 'vagao', 2.4, y); remains(x - 3, z - 6.5, 5, y + 0.03); }
+      else { addBox(x, y + 1.75, z, 12, 2.8, 2.8, pick([0x5a4a3a, 0x3a4a5a, 0x6a5a3a]), true); addContainer(x, z + 2.2, 'vagao', 2.2, y); addContainer(x, z - 2.2, 'vagao', 2.2, y); }
     }
-    RUINS.push({x:x0 + 30, z:z - 12, nm:'TREM ABANDONADO'}); remains(x0 - 9, z - 3, 6, 0.03);
+    RUINS.push({x:x0 + 30, z:z - 12, nm:'TREM ABANDONADO'}); remains(x0 - 9, z - 3, 6, y + 0.03);
   }
-  // barreira militar na rodovia sul
-  { const x = SMALL ? -150 : -210, z = HWY_S;
+  // barreira militar na rodovia sul (longe de onde a linha cruza)
+  { const cand = SMALL ? [-150, -110, 150, 110] : [-210, -160, 210, 160], xs = railCrossX(HWY_S); const x = cand.find(c => xs.every(q => Math.abs(q - c) > 40)) || cand[0], z = HWY_S;
     for (const o of [-5.4, -2.1, 2.1, 5.4]) if (Math.abs(o) > 3) addBox(x, 0.55, z + o, 1.1, 1.1, 2.6, 0x8a7a5a, true); else addBox(x + 6, 0.55, z + o, 1.1, 1.1, 2.6, 0x8a7a5a, true);
     for (let k = -1; k <= 1; k++) addBox(x - 6, 0.45, z + k * 3.2, 0.6, 0.9, 2.6, 0x9a9a92, true);
     addBox(x + 14, 1.5, z - 10.5, 6, 3, 4, 0x4a5a3a, true); addBox(x + 14, 3.15, z - 10.5, 6.4, 0.3, 4.4, 0x3a4a2a, false);
@@ -2077,25 +2101,10 @@ function buildRails(){
 }
 // ================= TREM QUE DÁ A VOLTA NA CIDADE =================
 let TRAIN = null;
-function trainPath(){
-  const RX = RAIL_RX, RZ = RAIL_RZ, CR = 14, segs = [];
-  const line = (x0, z0, x1, z1) => segs.push({t:'l', x0, z0, x1, z1, L:Math.hypot(x1 - x0, z1 - z0)});
-  const arc = (cx, cz, a0, a1) => segs.push({t:'a', cx, cz, a0, a1, L:Math.abs(a1 - a0) * CR});
-  line(-RX + CR, RZ, RX - CR, RZ); arc(RX - CR, RZ - CR, Math.PI / 2, 0);
-  line(RX, RZ - CR, RX, -RZ + CR); arc(RX - CR, -RZ + CR, 0, -Math.PI / 2);
-  line(RX - CR, -RZ, -RX + CR, -RZ); arc(-RX + CR, -RZ + CR, -Math.PI / 2, -Math.PI);
-  line(-RX, -RZ + CR, -RX, RZ - CR); arc(-RX + CR, RZ - CR, -Math.PI, -Math.PI * 1.5);
-  let L = 0; for (const s of segs){ s.s0 = L; L += s.L; }
-  return {segs, L, CR};
-}
+function trainPath(){ return {L:RAILP.L, pts:RAILP.pts}; }
 function trainAt(s){
-  const T = TRAIN, L = T.path.L; s = ((s % L) + L) % L; let g = T.path.segs[0];
-  for (const q of T.path.segs) if (s >= q.s0) g = q;
-  const u = s - g.s0; let x, z, dx, dz;
-  if (g.t === 'l'){ const k = u / g.L; x = g.x0 + (g.x1 - g.x0) * k; z = g.z0 + (g.z1 - g.z0) * k; dx = (g.x1 - g.x0) / g.L; dz = (g.z1 - g.z0) / g.L; }
-  else { const a = g.a0 + (g.a1 - g.a0) * (u / g.L), sg = Math.sign(g.a1 - g.a0), CR = T.path.CR; x = g.cx + Math.cos(a) * CR; z = g.cz + Math.sin(a) * CR; dx = -Math.sin(a) * sg; dz = Math.cos(a) * sg; }
-  const E = RAILS[2]; const y = Math.abs(x - RAIL_RX) < 0.5 ? railH(E, z) : 0;
-  return {x, z, y, yaw:Math.atan2(dx, dz)};
+  const P = RAILP.pts, L = P.length; s = ((s % L) + L) % L; const i = Math.floor(s), k = s - i, a = P[i], b = P[(i + 1) % L];
+  return {x:a.x + (b.x - a.x) * k, z:a.z + (b.z - a.z) * k, y:a.y + (b.y - a.y) * k, yaw:Math.atan2(b.x - a.x, b.z - a.z)};
 }
 function buildTrain(){
   const path = trainPath(), mat = new THREE.MeshLambertMaterial({vertexColors:true}), B = (x, y, z, sx, sy, sz, c) => [GB, x, y, z, sx, sy, sz, c, 0, 0];
@@ -2107,13 +2116,11 @@ function buildTrain(){
   for (let i = 0; i < 3; i++){ const col = [0x7a3a22, 0x4a5a3a, 0x6a5a40][i];
     cars.push({m:mk([B(0, 0.75, 0, 2.6, 0.5, 12, 0x2a2a2a), B(0, 1.15, 0, 2.9, 0.3, 12, col), B(1.42, 1.6, 0, 0.08, 0.6, 12, col), B(-1.42, 1.6, 0, 0.08, 0.6, 12, col), B(0, 1.6, 5.96, 2.9, 0.6, 0.08, col), B(0, 1.6, -5.96, 2.9, 0.6, 0.08, col)].concat(wheels(12))), L:12, top:1.3, solid:1.3}); }
   const sts = [];   // paradas nas estações
-  const st = (x, z) => { let best = 0, bd = 1e9; for (let s = 0; s < path.L; s += 2){ const p = trainAtRaw(path, s); const d = Math.hypot(p.x - x, p.z - z); if (d < bd){ bd = d; best = s; } } sts.push(best); };
   TRAIN = {path, cars, s:0, v:0, stop:15, sts, horn:0, gaps:[]};
   let off = 0; for (const c of cars){ c.off = off + c.L / 2; off += c.L + 1.2; }
-  for (const r of RUINS) if (r.nm === 'ESTAÇÃO CENTRAL' || r.nm === 'ESTAÇÃO DA SERRA' || r.nm === 'PARADA OESTE') st(r.x, r.z);
+  for (const r of RUINS) if (r.st) sts.push(r.s);
   TRAIN.sts.sort((a, b) => a - b); TRAIN.s = (TRAIN.sts[0] || 0) + cars[0].L / 2; placeTrain();
 }
-function trainAtRaw(path, s){ const t = TRAIN; TRAIN = {path}; const p = trainAt(s); TRAIN = t; return p; }
 function placeTrain(){
   const T = TRAIN; for (const c of T.cars){ const p = trainAt(T.s - c.off + T.cars[0].L / 2), q = trainAt(T.s - c.off + T.cars[0].L / 2 - 4);
     c.px = c.x; c.pz = c.z; c.pyaw = c.yaw; c.x = p.x; c.z = p.z; c.y = Math.max(p.y, q.y * 0) + 0; c.yaw = Math.atan2(p.x - q.x, p.z - q.z);
@@ -2139,6 +2146,13 @@ function updateTrain(dt){
   // atropela zumbis e empurra quem estiver no trilho
   if (T.v > 2 && !joiner){
     for (const z of zombies){ if (z.rep) continue; const c = trainCarAt(z.x, z.z, 0.3); if (c && z.y < c.y + c.solid - 0.6){ const dx = z.x - c.x, dz = z.z - c.z, d = Math.hypot(dx, dz) || 1; hitZombie(z, 400, dx / d, dz / d, 2, {force:3, crumple:true}); } }
+    for (const a of animals){ if (a.dead || a.rep) continue; const c = trainCarAt(a.x, a.z, a.d.rad); if (c && a.y < c.y + c.solid - 0.4){ hitAnimal(a, 999, {x:c.x, z:c.z}); blood(a.x, a.y + 0.5, a.z, 14); } }
+    // carros na frente: o trem arrasta, amassa e joga para o lado
+    const L0 = T.cars[0]; for (const v of VEH){ if (Math.abs(v.x - L0.x) > 9 || Math.abs(v.z - L0.z) > 9) continue; const c = trainCarAt(v.x, v.z, 1.0); if (!c || v.y > c.y + 1.5) continue;
+      const sx = Math.cos(c.yaw), sz = -Math.sin(c.yaw), side = ((v.x - c.x) * sx + (v.z - c.z) * sz) >= 0 ? 1 : -1, fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+      v.x += sx * side * 3.2 + fx * 2.5; v.z += sz * side * 3.2 + fz * 2.5; v.yaw += side * R(0.6, 1.4); v.spd = 0; v.hp = Math.max(0, v.hp - R(45, 80)); v.moved = true; v.g.position.set(v.x, v.y, v.z); v.g.rotation.y = v.yaw;
+      if (v.trunk){ v.trunk.x = v.x; v.trunk.z = v.z; } sfx('car_hit', 0.8, v.x, v.z, 0.7) || noiseSnd(0.4, 0.6, 300); if (Math.hypot(v.x - P.x, v.z - P.z) < 25) shake = Math.max(shake, 0.4); emitNoise(v.x, v.z, 40);
+      if (P.car === v){ P.vida -= 40; log('O trem bateu no seu carro!', '#ff8a7a'); } if (typeof NET !== 'undefined' && NET.on) netSend({t:'vx', v:netVehSig(v)}); }
   }
   if (T.v > 2 && !P.dead && !P.car){ const c = trainCarAt(P.x, P.z, 0.2); if (c && P.y < c.y + c.solid - 0.6 && (P.trainHit || 0) <= 0){ const sx = Math.cos(c.yaw), sz = -Math.sin(c.yaw), side = ((P.x - c.x) * sx + (P.z - c.z) * sz) >= 0 ? 1 : -1; P.x += sx * side * 2.2; P.z += sz * side * 2.2; P.vida -= 35; shake = 0.6; P.trainHit = 1.2; log('O trem te acertou!', '#ff8a7a'); } }
   P.trainHit = Math.max(0, (P.trainHit || 0) - dt);
@@ -2183,7 +2197,7 @@ function buildGrass(){
   for (const r of RUINS) scatter(420 * n, () => r.x + R(-22, 22), () => r.z + R(-22, 22), null, 1);
   for (const c of CAVEP) scatter(160 * n, () => c.x + R(-12, 12), () => c.z + R(0, 10), null, 0.7);
   // beira dos trilhos (e brita no meio)
-  for (const r of RAILS) for (let s = r.a; s < r.b; s += 1.4 / n){ const o = (Math.random() < 0.5 ? -1 : 1) * R(0.3, 4), x = r.h ? s : r.c + o, z = r.h ? r.c + o : s; if (railH(r, s) > 0.3) continue; if (okAll(x, z)) put(x, z, yAt(x, z), 0.8); }
+  for (let s = 0; s < RAILP.L; s += 1.4 / n){ const p = RAILP.pts[Math.floor(s)]; if (p.y > 0.3) continue; const o = (Math.random() < 0.5 ? -1 : 1) * R(0.3, 4), x = p.x + Math.cos(p.yaw) * o, z = p.z - Math.sin(p.yaw) * o; if (okAll(x, z)) put(x, z, yAt(x, z), 0.8); }
   // cidade (terrenos, beira de muro e calçada), zona rural, serra e floresta
   scatter(17000 * n, () => R(-TOWN, TOWN), () => R(NB + 8, SB - 8), okTown, 0.6);
   scatter(17000 * n, () => R(WX1 + 5, WX2 - 5), () => R(SB + 6, WZ2 - 6), (x, z) => !FIELDS.some(f => x > f.box.x1 && x < f.box.x2 && z > f.box.z1 && z < f.box.z2) && !FPATHS.some(r => x > r.x1 - 0.5 && x < r.x2 + 0.5 && z > r.z1 - 0.5 && z < r.z2 + 0.5) && Math.abs(z - (SB + 9)) > 4, 0.5);
@@ -2246,9 +2260,9 @@ function dangerAt(x, z){
 let LOC = {main:'', t:0, day:-1};
 function trainInfo(){
   if (!TRAIN) return ''; const T = TRAIN, L = T.path.L, on = !!trainCarAt(P.x, P.z, 0.1) && P.y > 0.9, near = Math.hypot(T.cars[0].x - P.x, T.cars[0].z - P.z) < 60;
-  if (!on && !near && !RUINS.some(r => r.nm.indexOf('ESTA') === 0 || r.nm === 'PARADA OESTE' ? Math.hypot(r.x - P.x, r.z - P.z) < 30 : false)) return '';
+  if (!on && !near && !RUINS.some(r => r.st && Math.hypot(r.x - P.x, r.z - P.z) < 30)) return '';
   let best = 1e9, bi = 0; T.sts.forEach((q, i) => { const d = ((q + T.cars[0].L / 2 - T.s) % L + L) % L; if (d < best){ best = d; bi = i; } });
-  const nm = ['Estação Central', 'Estação da Serra', 'Parada Oeste'], st = RUINS.filter(r => r.nm === 'ESTAÇÃO CENTRAL' || r.nm === 'ESTAÇÃO DA SERRA' || r.nm === 'PARADA OESTE');
+  const st = RUINS.filter(r => r.st);
   let sn = ''; { const q = trainAt(T.sts[bi]); let bd = 1e9; for (const r of st){ const d = Math.hypot(r.x - q.x, r.z - q.z); if (d < bd){ bd = d; sn = r.nm.toLowerCase().replace(/(^|\s)(\S)/g, (m, a, b) => a + b.toUpperCase()).replace('Da ', 'da '); } } }
   if (T.stop > 0) return '🚆 Trem parado' + (on ? '' : ' na estação') + ' · sai em ' + Math.ceil(T.stop) + ' s';
   return '🚆 Próxima parada: ' + sn + ' · ~' + Math.max(1, Math.round(best / Math.max(4, T.v || 12))) + ' s';
@@ -3543,9 +3557,9 @@ function buildMapBG(){
   g.fillStyle = '#1c3a20'; g.fillRect(tx(FOREST_X), tz(NB), (WX2 - FOREST_X) * MRES, (SB - NB) * MRES); g.fillRect(tx(WX1), tz(NB), (WX2 - FOREST_X) * MRES, (SB - NB) * MRES);
   drawLayer(g, tx, tz, MRES);
   g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1; for (const h of houses) g.strokeRect(tx(h.x1), tz(h.z1), (h.x2 - h.x1) * MRES, (h.z2 - h.z1) * MRES);
-  for (const r of RAILS){ const a = r.h ? [tx(r.a), tz(r.c)] : [tx(r.c), tz(r.a)], b = r.h ? [tx(r.b), tz(r.c)] : [tx(r.c), tz(r.b)];
-    g.lineCap = 'butt'; g.strokeStyle = '#2a2018'; g.lineWidth = Math.max(3, 3.4 * MRES); g.setLineDash([]); g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.stroke();
-    g.strokeStyle = '#c8bca8'; g.lineWidth = Math.max(1.4, 1.4 * MRES); g.setLineDash([4, 4]); g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.stroke(); g.setLineDash([]); }
+  if (RAILP){ const path = () => { g.beginPath(); RAILP.pts.forEach((p, i) => i ? g.lineTo(tx(p.x), tz(p.z)) : g.moveTo(tx(p.x), tz(p.z))); g.closePath(); };
+    g.lineCap = 'butt'; g.lineJoin = 'round'; g.strokeStyle = '#2a2018'; g.lineWidth = Math.max(3, 3.4 * MRES); g.setLineDash([]); path(); g.stroke();
+    g.strokeStyle = '#c8bca8'; g.lineWidth = Math.max(1.4, 1.4 * MRES); g.setLineDash([4, 4]); path(); g.stroke(); g.setLineDash([]); }
   mapLabels = [];
   const L = (x, z, t, size, col, minZ) => mapLabels.push({x, z, t, size, col, minZ});
   for (const h of houses){ const nm = SHOP[h.kind] ? SHOP[h.kind].nome : {shopping:'SHOPPING', igreja:'IGREJA', caverna:'CAVERNA', celeiro:'CELEIRO'}[h.kind]; if (nm) L(h.cx, h.cz, nm, 11, '#ffffff', h.kind === 'caverna' || h.kind === 'shopping' ? 0.5 : 1.3); }
@@ -4107,6 +4121,7 @@ function addVehicle(x, z, yaw, o){
   GNOVEH = true; v.y = groundAt(x, z, 0.5, v.y + 0.5); GNOVEH = false; v.g.position.set(x, v.y, z); v.g.rotation.y = yaw; scene.add(v.g); VEH.push(v); return v;
 }
 function vehFree(x, z, yaw){
+  if (onRail(x, z, 2.5)) return false;
   if (Math.abs(terrainAt(x, z + 2) - terrainAt(x, z - 2)) > 1.2 || Math.abs(terrainAt(x + 2, z) - terrainAt(x - 2, z)) > 1.2) return false;
   const sn = Math.sin(yaw), c = Math.cos(yaw), y = terrainAt(x, z);
   for (const k of [-1.6, 0, 1.6]) if (hitAny(x + sn * k, z + c * k, 1.05, y + 0.3)) return false;
@@ -5060,7 +5075,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-10';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-11';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
