@@ -216,7 +216,7 @@ const CFG_DEF = {crossStyle:'circulo', crossColor:'#ffffff', crossSize:1, crossT
   quality:'auto', viewDist:1, rainOn:true, blood:true, showMini:true, showMoods:true, showHot:true, hudScale:1,
   volMaster:0.8, volFx:1, volAmb:1, heartbeat:true, realSfx:true,
   zSpeed:1, zPop:1, zDmg:1, surround:true, dayLen:1, hordesOn:true, miniRotate:true, miniZoom:1,
-  diff:'normal', startH:8, nightLock:false, fogNight:1, rainMode:'auto', animals:1};
+  diff:'normal', startH:8, nightLock:false, fogNight:1, rainMode:'auto', animals:1, hordeN:6, hordeSz:1};
 let CFG = Object.assign({}, CFG_DEF);
 try { Object.assign(CFG, JSON.parse(localStorage.getItem('zm_cfg') || '{}')); } catch(e){}
 function saveCfg(){ try { localStorage.setItem('zm_cfg', JSON.stringify(typeof NET !== 'undefined' && NET.myRoom ? Object.assign({}, CFG, NET.myRoom) : CFG)); } catch(e){} }
@@ -229,14 +229,14 @@ const CFG_UI = [
   ['Gráficos', [['quality', 'Qualidade', 'sel', [['auto', 'Automática'], ['baixa', 'Baixa (mais rápido)'], ['media', 'Média'], ['alta', 'Alta']]], ['viewDist', 'Distância de visão', 'range', 0.5, 1.6, 0.05], ['rainOn', 'Efeito de chuva', 'chk'], ['blood', 'Sangue', 'chk'], ['showMini', 'Minimapa', 'chk'], ['miniRotate', 'Minimapa gira com o personagem', 'chk'], ['miniZoom', 'Zoom do minimapa', 'range', 0.5, 2.5, 0.1], ['showMoods', 'Indicadores de estado', 'chk'], ['showHot', 'Barra de armas', 'chk'], ['hudScale', 'Tamanho da interface', 'range', 0.7, 1.4, 0.05]]],
   ['Áudio', [['volMaster', 'Volume geral', 'range', 0, 1, 0.05], ['volFx', 'Efeitos', 'range', 0, 1, 0.05], ['volAmb', 'Ambiente (vento e chuva)', 'range', 0, 1, 0.05], ['heartbeat', 'Batimentos cardíacos', 'chk'], ['realSfx', 'Sons gravados (tiros, zumbis, portas, carro)', 'chk']]],
   ['Mundo / Sala', [['diff', 'Dificuldade', 'sel', [['facil', 'Fácil'], ['normal', 'Normal'], ['dificil', 'Difícil'], ['pesadelo', 'Pesadelo'], ['custom', 'Personalizada']]],
-    ['zPop', 'Quantidade de zumbis', 'range', 0.3, 3, 0.05], ['zSpeed', 'Velocidade dos zumbis', 'range', 0.5, 1.6, 0.05], ['zDmg', 'Dano dos zumbis', 'range', 0.3, 2.5, 0.05], ['surround', 'Morrer quando cercado (4+ zumbis)', 'chk'], ['hordesOn', 'Hordas', 'chk'],
+    ['zPop', 'Quantidade de zumbis', 'range', 0.3, 3, 0.05], ['zSpeed', 'Velocidade dos zumbis', 'range', 0.5, 1.6, 0.05], ['zDmg', 'Dano dos zumbis', 'range', 0.3, 2.5, 0.05], ['surround', 'Morrer quando cercado (4+ zumbis)', 'chk'], ['hordesOn', 'Hordas', 'chk'], ['hordeN', 'Número de hordas', 'range', 1, 12, 1], ['hordeSz', 'Tamanho das hordas (×)', 'range', 0.3, 2, 0.1],
     ['startH', 'Horário (muda na hora)', 'sel', [[6, 'Amanhecer (6h)'], [8, 'Manhã (8h)'], [12, 'Meio-dia'], [17, 'Fim de tarde (17h)'], [20, 'Anoitecer (20h)'], [23, 'Noite (23h)'], [2, 'Madrugada (2h)']]],
     ['nightLock', 'Noite eterna (sempre de noite)', 'chk'], ['dayLen', 'Duração do dia (×)', 'range', 0.5, 4, 0.25],
     ['fogNight', 'Neblina à noite', 'sel', [[1, 'Normal'], [1.6, 'Forte'], [2.4, 'Muito forte']]], ['rainMode', 'Chuva', 'sel', [['auto', 'Vem e vai'], ['sempre', 'Sempre chovendo'], ['nunca', 'Nunca']]],
     ['animals', 'Animais para caçar', 'range', 0.5, 3, 0.1]], 'room']
 ];
 let cfgTab = 0, MASTER = null, FXG = null, AMBG = null;
-const ROOM_KEYS = ['diff', 'zPop', 'zSpeed', 'zDmg', 'surround', 'hordesOn', 'startH', 'nightLock', 'dayLen', 'fogNight', 'rainMode', 'animals'];
+const ROOM_KEYS = ['diff', 'zPop', 'zSpeed', 'zDmg', 'surround', 'hordesOn', 'hordeN', 'hordeSz', 'startH', 'nightLock', 'dayLen', 'fogNight', 'rainMode', 'animals'];
 const DIFFS = {facil:{zPop:0.6, zSpeed:0.8, zDmg:0.6, surround:false}, normal:{zPop:1, zSpeed:1, zDmg:1, surround:true}, dificil:{zPop:1.6, zSpeed:1.2, zDmg:1.4, surround:true}, pesadelo:{zPop:2.6, zSpeed:1.45, zDmg:2, surround:true}};
 const ROOM_TAB = CFG_UI.findIndex(t => t[2] === 'room');
 const roomLocked = () => typeof NET !== 'undefined' && NET.on && NET.role === 'join';
@@ -4630,7 +4630,7 @@ function update(dt){
     let solo = 0; for (const z of zombies) if (!z.horde) solo++;
     const dlv = DISTRICTS.length ? dangerAt(P.x, P.z) : 1, target = Math.min(MAXZ * CFG.zPop * (0.8 + dlv * 0.35), ((SMALL ? 60 : 120) + (dlv - 1) * (SMALL ? 12 : 25)) * CFG.zPop + day * 12 + (nightF > .6 ? 12 : 0));
     for (let k = 0, nk = solo < target * 0.7 ? 3 : 1; k < nk && solo + k < target && zombies.length < HARDCAP; k++) spawnZombie(40, Math.random() < dlv * 0.12 ? 'runner' : undefined);
-    if (CFG.hordesOn && hordes.length < 3 + Math.min(3, day) && Math.random() < 0.06) spawnHorde(Math.max(6, Math.round((day === 0 ? pick([15, 30, 60]) : pick([15, 30, 60, 100])) * Math.min(2, CFG.zPop))), false, 90);
+    if (CFG.hordesOn && hordes.length < (+CFG.hordeN || 6) && Math.random() < 0.06) spawnHorde(Math.max(6, Math.round((day === 0 ? pick([15, 30, 60]) : pick([15, 30, 60, 100])) * Math.min(2, CFG.zPop) * (+CFG.hordeSz || 1))), false, 90);
   }
   cullT -= dt; if (cullT <= 0){ cullT = 0.3; cullChunks(); }
   for (const v of VEH) if (v.trunk){ const t = v.trunk; t.x = v.x - Math.sin(v.yaw) * 2.6; t.z = v.z - Math.cos(v.yaw) * 2.6; t.y = v.y; t.range = 1.5; }
@@ -4702,10 +4702,10 @@ function newGame(seed){
   gameMin = (CFG.startH === undefined ? 8 : CFG.startH) * 60;
   spawnAnimals();
   for (let i = 0; i < Math.round((SMALL ? 75 : 165) * CFG.zPop); i++) spawnZombie(28);
-  if (CFG.hordesOn){ const q = n => Math.max(6, Math.round(n * CFG.zPop));
-    spawnHorde(q(20), false, 55, 85, 'misto'); spawnHorde(q(30), false, 120, 9999, 'lentos'); spawnHorde(q(15), false, 100, 9999, 'rapidos');
-    if (!SMALL){ spawnHorde(q(100), false, 170, 9999, 'misto'); spawnHorde(q(40), false, 150, 9999, 'lentos'); spawnHorde(q(25), false, 200, 9999, 'rapidos'); }
-    else spawnHorde(q(45), false, 140, 9999, 'misto'); }
+  if (CFG.hordesOn){ const q = n => Math.max(6, Math.round(n * CFG.zPop * (+CFG.hordeSz || 1)));
+    const H0 = SMALL ? [[20, 55, 85, 'misto'], [30, 120, 9999, 'lentos'], [15, 100, 9999, 'rapidos'], [45, 140, 9999, 'misto']]
+      : [[20, 55, 85, 'misto'], [30, 120, 9999, 'lentos'], [15, 100, 9999, 'rapidos'], [100, 170, 9999, 'misto'], [40, 150, 9999, 'lentos'], [25, 200, 9999, 'rapidos']];
+    for (let i = 0; i < (+CFG.hordeN || 6); i++){ const h = H0[i] || [pick([15, 30, 60]), 120, 9999, pick(HTYPES)]; spawnHorde(q(h[0]), false, h[1], h[2], h[3]); } }
   // bairros com muitos infectados: zumbis a mais perambulando por lá
   for (const d of DISTRICTS){ const lv = dangerAt(d.x, d.z); if (lv < 2) continue; const want = Math.round((lv - 1) * (SMALL ? 10 : 20) * CFG.zPop);
     for (let i = 0, made = 0; i < want * 4 && made < want && zombies.length < HARDCAP; i++){ const x = d.x + R(-d.hw, d.hw), z = d.z + R(-d.hw, d.hw); if (Math.hypot(x - P.x, z - P.z) < 45 || inHouse(x, z, 0.5)) continue; const y = groundAt(x, z, 0.3, (HF ? hfAt(x, z) : 0) + 1); if (hitAny(x, z, 0.35, y + 0.05)) continue; makeZombie(x, z, Math.random() < 0.25 ? 'runner' : undefined, y); made++; } }
@@ -5041,7 +5041,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-8';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-9';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
