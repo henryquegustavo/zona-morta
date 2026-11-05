@@ -603,8 +603,8 @@ function groundAt(x, z, r, feet){
   for (let i = Math.floor((x - r) / CELL); i <= Math.floor((x + r) / CELL); i++)
     for (let j = Math.floor((z - r) / CELL); j <= Math.floor((z + r) / CELL); j++){
       const k = gk(i, j), a = grid.get(k), b = pgrid.get(k);
-      if (a) for (const c of a){ if (c.off || c.nt || c.h > lim || c.h <= g || x + r < c.x1 || x - r > c.x2 || z + r < c.z1 || z - r > c.z2) continue; g = c.h; }
-      if (b) for (const p of b){ if (p.top > lim || p.top <= g || x + r <= p.x1 || x - r >= p.x2 || z + r <= p.z1 || z - r >= p.z2) continue; g = p.top; }
+      if (a) for (const c of a){ if (c.off || c.nt || (BNOG && c.bld) || c.h > lim || c.h <= g || x + r < c.x1 || x - r > c.x2 || z + r < c.z1 || z - r > c.z2) continue; g = c.h; }
+      if (b) for (const p of b){ if ((BNOG && p.bld) || p.top > lim || p.top <= g || x + r <= p.x1 || x - r >= p.x2 || z + r <= p.z1 || z - r >= p.z2) continue; g = p.top; }
     }
   // dá para ficar em cima dos vagões do trem
   if (TRAIN){ const c = trainCarAt(x, z, r * 0.5); if (c){ const t = c.y + c.top; if (t <= lim && t > g) g = t; } }
@@ -3331,6 +3331,7 @@ function shoot(w){
       if (e.type === 'win'){ damageEnt(e, 999, ex, ey, ez); }
       else { damageEnt(e, raw * 0.5, ex, ey, ez); continue; }
     }
+    if (BUILT.length){ const bb = bldRay(O, hx, hz, tp, bd); if (bb){ bldShot(bb.b, w.dano * (w.pell > 1 ? 0.6 : 1), O.x + hx * bb.t, O.y + tp * bb.t, O.z + hz * bb.t); continue; } }
     const cp = corpsePick(O, hx, hz, tp, bd);
     if (cp){
       const raw = w.dano * R(0.85, 1.15) * (w.pell > 1 ? 1 - cp.t / w.alc * 0.6 : 1); blood(cp.x, cp.y, cp.z2, 6); splat(cp.x + R(-.3, .3), cp.z2 + R(-.3, .3), cp.y - 0.3, R(0.1, 0.25));
@@ -3727,7 +3728,7 @@ function openGuide(from){
   h += '<h4>ARMAS DE FOGO</h4>';
   for (const id of WEAPON_ORDER.filter(i => ITEMS[i].fogo)) h += `<div class="it"><span><b>${ITEMS[id].nome}</b><br><span class="m">Munição ${ITEMS[id].mun} · Onde achar: ${ITEMS[id].onde}</span>${statHTML(ITEMS[id])}</span></div>`;
   h += '<h4>CARROS</h4><div class="amm">Carros parados nas ruas: chegue perto e aperte E (USAR no celular). W/S acelera e freia (ré), A/D vira, ESPAÇO é o freio de mão, E sai. Cada carro tem GASOLINA e LATARIA: batidas, atropelos e zumbis batendo gastam a lataria; com menos de 30% o carro fica lento e com menos de 20% os zumbis alcançam você pelos vidros. Encha o tanque com GALÃO de gasolina ou na bomba do posto; conserte com CAIXA DE FERRAMENTAS (garagens, ferragens). O motor faz barulho e atrai zumbis.</div>';
-  h += '<h4>CONSTRUIR O FORTE</h4><div class="amm">' + (isTouch ? 'Toque em CONSTRUIR' : 'Aperte B') + ' para entrar no modo construção: aparece a peça verde na sua frente, presa numa grade de 2 m (as paredes se encaixam nos cantos). Vermelha = não dá (falta material, chão torto, algo no caminho). ' + (isTouch ? 'CONSTRUIR põe a peça, GIRAR vira, PEÇA troca, DESMONTAR tira.' : 'Clique põe, R gira, Q ou rodinha (ou 1–5) troca a peça, X desmonta, E abre o portão.') + ' Precisa de um MARTELO na mochila. Peças: parede de madeira (4 tábuas + 6 pregos), parede reforçada com chapas (3 tábuas + 2 chapas + 8 pregos, aguenta bem mais), portão que abre e fecha (5 tábuas + 8 pregos), barricada baixa que você pula e os zumbis não (2 tábuas + 4 pregos) e plataforma de vigia para atirar por cima do muro (6 tábuas + 10 pregos). TÁBUAS, PREGOS e CHAPAS ficam em ferragens, garagens, celeiros, escombros, caixas e vagões; porta quebrada dá 2 tábuas (E). Martelar faz barulho. Zumbis presos numa peça batem até derrubar: quanto mais zumbis, mais rápido. Atrás da parede eles não te veem; fique quieto e agachado que eles desistem. Desmontar devolve parte do material. Na sala, todos veem e usam o mesmo forte.</div>';
+  h += '<h4>CONSTRUIR O FORTE</h4><div class="amm">' + (isTouch ? 'Toque em CONSTRUIR' : 'Aperte B') + ' para entrar no modo construção: aparece a peça verde na sua frente, presa numa grade de 2 m (as paredes se encaixam nos cantos). Vermelha = não dá (falta material, chão torto, algo no caminho). ' + (isTouch ? 'CONSTRUIR põe a peça, GIRAR vira (a parede também DEITA e vira piso), PEÇA troca, DESMONTAR tira, USAR conserta.' : 'Clique põe, R gira (a parede também DEITA e vira piso), Q ou rodinha (ou 1–6) troca a peça, E conserta, X desmonta.') + ' <b>Empilhar:</b> as peças se apoiam no chão ou em cima de outra peça. Clique de novo numa parede e a próxima vai em cima dela; olhe para CIMA para construir no alto (piso em cima das paredes, plataforma em cima de plataforma). Dá para subir até ' + BLD_MAXH + ' m. Se a peça de baixo cair, o que estava em cima desaba. Suba pulando nas plataformas e pisos ou pela ESCADA.' + ' Peças: parede de madeira (4 tábuas + 6 pregos), parede reforçada com chapas (3 tábuas + 2 chapas + 8 pregos, aguenta bem mais), portão que abre e fecha (5 tábuas + 8 pregos), barricada baixa que você pula e os zumbis não (2 tábuas + 4 pregos), plataforma de vigia (6 tábuas + 10 pregos) e escada que sobe um andar (5 tábuas + 6 pregos).' + ' <b>Conserto:</b> com o MARTELO, mire na peça estragada e aperte ' + (isTouch ? 'USAR' : 'E') + ': volta 35% da resistência por 1 tábua e 2 pregos. Zumbis presos numa peça batem até derrubar; tiros também gastam, mas as paredes aguentam bem mais que uma porta (a reforçada, o dobro). TÁBUAS, PREGOS e CHAPAS ficam em ferragens, garagens, celeiros, escombros, caixas e vagões; porta quebrada dá 2 tábuas (E). Martelar faz barulho. Na sala, todos veem e usam o mesmo forte.</div>';
   h += '<h4>SAÚDE</h4><div class="amm">A vida volta sozinha devagar quando você está alimentado e hidratado (fome e sede acima de 40%), sem sangramento e sem febre. Sangramento leve estanca sozinho com o tempo; bandagem resolve na hora. Arranhões e mordidas podem infeccionar: depois de uns 2 minutos vem a FEBRE, que tira vida. ANTIBIÓTICO (farmácia, hospital) cura a infecção — mordida precisa de 2 doses. Antitérmico e analgésico seguram a febre por alguns minutos.</div>';
   h += '<h4>CRÉDITOS DOS SONS</h4><div class="amm">Sons gravados do pacote "CC-Sounds" do Cataclysm: Dark Days Ahead (github.com/Fris0uman/CDDA-Soundpacks, CC BY-SA 4.0), com gravações CC0 e CC-BY do freesound.org e soundbible.com de DoctorBoomstick, InspectorJ, GoodSoundForYou, MATRIXXX_, FuzzyTuesday, -sihiL, mazlyn, SpliceSound, dawidwmika, kretopi e outros autores. Dá para desligar em Configurações › Áudio.</div>';
   $('#guideL').innerHTML = h;
@@ -3851,6 +3852,7 @@ function interact(){
   if (it.k === 'pump'){ const v = it.o; v.fuel = 100; log('Tanque cheio! (gasolina 100%)', '#9fe09a'); sfx('cook', 0.3, undefined, undefined, 0.6) || noiseSnd(0.8, 0.05, 1500, 'bandpass'); emitNoise(P.x, P.z, 4); return; }
   if (it.k === 'fin'){ startFinisher(it.o); return; }
   if (it.k === 'gate'){ bldGate(it.o, !it.o.o, true); return; }
+  if (it.k === 'fix'){ bldFixStart(it.o); return; }
   if (it.k === 'scrap'){ bldScrap(it.o); return; }
   if (it.k === 'c') openLoot(it.o);
   else if (it.k === 'door'){ const e = it.o; if (e.state === 'aberta') closeDoor(e); else if (e.state === 'fechada') openDoor(e); else startPry(e); }
@@ -3945,6 +3947,7 @@ function nearestInteract(){
     if (d < bd - 0.2){ bd = d; best = {k:e.type === 'door' && e.state === 'quebrada' ? 'scrap' : e.type, o:e}; }
   }
   if (BUILT.length){ const gb = bldAimed(2.0); if (gb && BP[gb.k].gate){ const c = gb.col, d = Math.hypot(P.x - clamp(P.x, c.x1, c.x2), P.z - clamp(P.z, c.z1, c.z2)); if (!best || d < bd){ best = {k:'gate', o:gb}; bd = d; } } }
+  { const fb = bldFixTarget(); if (fb){ const c = fb.col, d = Math.hypot(P.x - clamp(P.x, c.x1, c.x2), P.z - clamp(P.z, c.z1, c.z2)); if (!best || best.k === 'gate' || d <= bd + 0.3){ best = {k:'fix', o:fb}; bd = d; } } }
   if (!best || bd > 1.0){ const v = nearestVeh(1.4); if (v){ const pu = nearPump(2.6); if (pu && !v.occ && v.fuel < 99.5 && Math.hypot(v.x - pu.x, v.z - pu.z) < 9) return {k:'pump', o:v}; return {k:'car', o:v}; } }
   return best;
 }
@@ -3957,6 +3960,7 @@ function interactLabel(it){
   if (it.k === 'pump') return pre + 'Encher o tanque na bomba (' + Math.round(it.o.fuel) + '%)';
   if (it.k === 'gate') return pre + (it.o.o ? 'Fechar o portão' : 'Abrir o portão') + ' · resistência ' + bldPct(it.o) + '%';
   if (it.k === 'scrap') return pre + 'Arrancar as tábuas da porta quebrada (+2 tábuas)';
+  if (it.k === 'fix') return pre + 'Consertar ' + bldName(it.o.k, it.o.ax).toLowerCase() + ' (' + bldPct(it.o) + '%) · ' + (CFG.buildFree ? 'grátis' : '1 tábua + 2 pregos');
   if (it.k === 'c') return pre + 'Revistar ' + it.o.nome + (it.o.aberto && !it.o.loot.length ? ' (vazio)' : '');
   if (it.k === 'door'){ const e = it.o; return e.state === 'aberta' ? pre + 'Fechar porta' : e.state === 'fechada' ? pre + 'Abrir porta' : pre + 'Arrombar a fechadura (TRANCADA) · ou derrube: chute (' + (isTouch ? 'EMPURRAR' : 'G') + '), golpes ou tiros'; }
   return it.o.broken ? pre + 'Pular a janela' : pre + 'Quebrar janela (faz barulho)';
@@ -4858,21 +4862,26 @@ function init(){
   loop();
   mpSetup();
 }
-// ================= FORTE: PAREDES, PORTÕES, BARRICADAS E PLATAFORMAS =================
-// Grade de 2 m: paredes, portões e barricadas ficam nas linhas da grade e se ligam nos cantos; a plataforma ocupa uma casa da grade.
-// Cada peça é um colisor comum (bloqueia jogador, zumbis, visão e tiro). Zumbi preso numa peça bate nela até derrubar.
-// Na sala: quem constrói manda a peça para todos; o dano dos zumbis é do anfitrião, que manda a resistência e avisa quando cai.
+// ================= FORTE: PAREDES, PISOS, PORTÕES, BARRICADAS, PLATAFORMAS E ESCADAS =================
+// Grade de 2 m: paredes, portões e barricadas ficam nas linhas da grade e se ligam nos cantos; piso (parede deitada), plataforma e escada ocupam uma casa.
+// As peças empilham: cada uma se apoia no chão ou no topo de outra peça encostada. Peça que perde o apoio desaba.
+// Cada peça é um colisor comum (bloqueia jogador e zumbis; a visão em 3D). Zumbi preso numa peça bate nela até derrubar; tiro também gasta.
+// Na sala: quem constrói manda a peça para todos; o dano é do anfitrião, que manda a resistência e avisa quando cai.
 const BG = 2;
 const BP = {
-  parede:{nome:'Parede de madeira', art:'a', w:2, h:2.4, t:0.22, hp:800, custo:{tabua:4, prego:6}, dur:1.4},
-  reforco:{nome:'Parede reforçada', art:'a', w:2, h:2.4, t:0.28, hp:2000, custo:{tabua:3, chapa:2, prego:8}, dur:2.2},
+  parede:{nome:'Parede de madeira', art:'a', w:2, h:2.4, t:0.22, hp:800, custo:{tabua:4, prego:6}, dur:1.4, flat:1},
+  reforco:{nome:'Parede reforçada', art:'a', w:2, h:2.4, t:0.28, hp:2000, custo:{tabua:3, chapa:2, prego:8}, dur:2.2, flat:1, metal:1},
   portao:{nome:'Portão', art:'o', w:2, h:2.3, t:0.16, hp:600, custo:{tabua:5, prego:8}, gate:1, dur:1.8},
   barricada:{nome:'Barricada', art:'a', w:2, h:1.1, t:0.6, hp:450, custo:{tabua:2, prego:4}, low:1, dur:1.0},
-  plataforma:{nome:'Plataforma de vigia', art:'a', w:1.76, h:1.4, t:1.76, hp:900, custo:{tabua:6, prego:10}, plat:1, dur:2.4}
+  plataforma:{nome:'Plataforma de vigia', art:'a', w:1.76, h:1.4, t:1.76, hp:900, custo:{tabua:6, prego:10}, plat:1, dur:2.4},
+  escada:{nome:'Escada', art:'a', w:1.9, h:2.4, t:1.9, hp:500, custo:{tabua:5, prego:6}, stair:1, dur:2.0}
 };
 const BORD = Object.keys(BP), MATN = {tabua:'tábuas', prego:'pregos', chapa:'chapas'};
-let BUILT = [];
+const FLAT_H = 0.2, BLD_REACH = 5.2, BLD_MAXH = 14, FIX_K = 0.35, FIX_COST = {tabua:1, prego:2};
+let BUILT = [], BNOG = false;
 const BLD = {on:false, k:0, rot:0, ghost:null, gkey:'', ok:false, why:'', spot:null, act:null, prevEq:null, mats:null, geo:{}, chkT:0, barKey:'', aim:null};
+const bldRotN = k => BP[k].flat ? 3 : BP[k].stair ? 4 : BP[k].plat ? 1 : 2;
+const bldTop = b => b.y + b.H;
 
 // ---------- texturas e malhas ----------
 function bldMats(){
@@ -4917,11 +4926,15 @@ function bldGeo(boxes){
   G.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); G.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); G.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   G.computeBoundingSphere(); return G;
 }
-// forma de cada peça, deitada ao longo de x, com a base em y = 0 (as estacas descem 0,6 m para cobrir chão torto)
-function bldShape(k){
-  if (BLD.geo[k]) return BLD.geo[k];
-  const sp = BP[k], h = sp.h, D = -0.6, W = [], M = [], L = [];
-  if (k === 'parede' || k === 'reforco'){
+// forma de cada peça, ao longo de x, com a base em y = 0. v: 'g' no chão (as estacas descem 0,6 m para cobrir chão torto), 'e' em cima de outra peça, 'f' deitada (piso)
+function bldShape(k, v){
+  const key = k + v; if (BLD.geo[key]) return BLD.geo[key];
+  const sp = BP[k], h = sp.h, D = v === 'g' ? -0.6 : 0, W = [], M = [], L = [];
+  if (v === 'f'){
+    W.push([0, FLAT_H / 2, 0, 2.0, FLAT_H, 2.0]);
+    for (const s of [-0.62, 0, 0.62]) W.push([s, -0.04, 0, 0.12, 0.09, 1.96, 0, 0, 1]);   // vigas embaixo
+    if (sp.metal) M.push([0, FLAT_H + 0.008, 0, 1.94, 0.014, 1.94]);
+  } else if (k === 'parede' || k === 'reforco'){
     W.push([0, (h + D) / 2, 0, 1.92, h - D, sp.t * 0.62]);
     for (const s of [-1, 1]) W.push([s * 0.93, (h + D) / 2 + 0.02, 0, 0.15, h - D + 0.04, sp.t]);
     for (const y of [0.45, 1.85]) for (const s of [-1, 1]) W.push([0, y, s * sp.t * 0.38, 1.86, 0.15, 0.05, 0, 0, 1]);
@@ -4936,61 +4949,105 @@ function bldShape(k){
     for (const y of [0.22, 0.55, 0.88]) W.push([0, y, 0.12, 2.0, 0.25, 0.07, 0, 0, 1]);
     for (const x of [-0.78, 0, 0.78]) for (const a of [-0.48, 0.48]) W.push([x, 0.5, -0.06, 0.1, 1.32, 0.1, a, 0]);
     W.push([0, 0.98, -0.06, 2.0, 0.1, 0.1, 0, 0, 1]);
-  } else {   // plataforma de vigia
-    for (const x of [-0.8, 0.8]) for (const z of [-0.8, 0.8]) W.push([x, (h + D) / 2 - 0.05, z, 0.15, h - D - 0.1, 0.15]);
+  } else if (k === 'plataforma'){
+    const d = v === 'g' ? -0.6 : -0.08;
+    for (const x of [-0.8, 0.8]) for (const z of [-0.8, 0.8]) W.push([x, (h + d) / 2 - 0.05, z, 0.15, h - d - 0.1, 0.15]);
     W.push([0, h - 0.06, 0, 1.9, 0.12, 1.9, 0, 0, 1]);
     for (const s of [-0.8, 0.8]){ W.push([0, h - 0.18, s, 1.76, 0.12, 0.1, 0, 0, 1]); W.push([s, h - 0.18, 0, 0.1, 0.12, 1.76]); }
     for (const s of [-0.86, 0.86]) for (const a of [-0.62, 0.62]){ W.push([0, 0.6, s, 1.9, 0.09, 0.05, 0, a, 1]); W.push([s, 0.6, 0, 0.05, 0.09, 1.9, a, 0]); }
     for (const x of [-0.24, 0.24]) W.push([x, 0.66, 0.97, 0.06, 1.5, 0.06]);
     for (let y = 0.2; y < 1.35; y += 0.3) W.push([0, y, 0.97, 0.5, 0.05, 0.06, 0, 0, 1]);
+  } else {   // escada: sobe para +z, de z = -1 até z = +1, 8 degraus de 0,3 m
+    for (let i = 0; i < 8; i++) W.push([0, 0.3 * (i + 1) - 0.05, -1 + 0.25 * i + 0.125, 1.72, 0.1, 0.27, 0, 0, 1]);
+    const a = Math.atan2(2.4, 2.0), len = Math.hypot(2.4, 2.0);
+    for (const s of [-0.9, 0.9]) W.push([s, 1.12, 0, 0.08, 0.3, len, -a, 0]);
+    for (const s of [-0.9, 0.9]) W.push([s, 1.2 + (v === 'g' ? -0.3 : 0), 0.96, 0.1, 2.4 + (v === 'g' ? 0.6 : 0), 0.1]);   // pés do topo
   }
-  return (BLD.geo[k] = {w:W.length ? bldGeo(W) : null, m:M.length ? bldGeo(M) : null, l:L.length ? bldGeo(L) : null});
+  return (BLD.geo[key] = {w:W.length ? bldGeo(W) : null, m:M.length ? bldGeo(M) : null, l:L.length ? bldGeo(L) : null});
 }
+const bldVar = b => b.ax === 'f' ? 'f' : b.gr ? 'g' : 'e';
 function bldMesh(b){
-  const S = bldShape(b.k), M = bldMats(), g = new THREE.Group();
+  const S = bldShape(b.k, bldVar(b)), M = bldMats(), g = new THREE.Group();
   b.mw = M.wood.clone(); b.mm = M.metal.clone();
   if (S.w) g.add(new THREE.Mesh(S.w, b.mw));
   if (S.m) g.add(new THREE.Mesh(S.m, b.mm));
   if (S.l){ const leaf = new THREE.Group(); leaf.position.x = -0.88; leaf.add(new THREE.Mesh(S.l, b.mw)); g.add(leaf); b.leaf = leaf; b.openK = b.o ? 1 : 0; leaf.rotation.y = -b.openK * Math.PI / 2 * 0.95; }
-  g.position.set(b.x, b.y, b.z); g.rotation.y = b.ax === 'z' ? Math.PI / 2 : 0;
+  g.position.set(b.x, b.y, b.z); g.rotation.y = BP[b.k].stair ? b.dir * Math.PI / 2 : b.ax === 'z' ? Math.PI / 2 : 0;
   return g;
 }
 function bldTint(b){ const k = clamp(b.hp / b.mx, 0, 1), c = 0.42 + 0.58 * k; b.mw.color.setRGB(c + (1 - k) * 0.08, c, c * (0.92 + 0.08 * k)); b.mm.color.setRGB(c + (1 - k) * 0.12, c, c); }
 
-// ---------- colocar e tirar ----------
-function bldBox(k, x, z, ax){ const sp = BP[k], hx = ax === 'x' ? sp.w / 2 : sp.t / 2, hz = ax === 'x' ? sp.t / 2 : sp.w / 2; return {x1:x - hx, x2:x + hx, z1:z - hz, z2:z + hz}; }
+// ---------- caixa, apoio e colocação ----------
+function bldBox(k, x, z, ax){
+  if (ax === 'f') return {x1:x - 0.95, x2:x + 0.95, z1:z - 0.95, z2:z + 0.95};
+  const sp = BP[k], hx = ax === 'x' ? sp.w / 2 : sp.t / 2, hz = ax === 'x' ? sp.t / 2 : sp.w / 2; return {x1:x - hx, x2:x + hx, z1:z - hz, z2:z + hz};
+}
+const bldTouch = (a, c, pad) => a.x1 < c.x2 + pad && a.x2 > c.x1 - pad && a.z1 < c.z2 + pad && a.z2 > c.z1 - pad;
+// as duas peças ocupam o mesmo lugar? (encostar no canto ou ficar uma em cima da outra pode)
+function bldClash(box, y0, y1, o){
+  const c = o.col, ox = Math.min(box.x2, c.x2) - Math.max(box.x1, c.x1), oz = Math.min(box.z2, c.z2) - Math.max(box.z1, c.z1), oy = Math.min(y1, bldTop(o)) - Math.max(y0, o.y);
+  return oy > 0.05 && ox > 0.6 * Math.min(box.x2 - box.x1, c.x2 - c.x1) && oz > 0.6 * Math.min(box.z2 - box.z1, c.z2 - c.z1);
+}
+// chão de verdade (terreno, casas) debaixo de um ponto, sem contar as peças construídas
+function bldGround(x, z, lim){ BNOG = true; GNOVEH = true; const g = groundAt(x, z, 0.05, lim); BNOG = false; GNOVEH = false; return g; }
+function bldSupported(o){
+  if (o.gr) return true;
+  for (const p of BUILT) if (p !== o && !p.dead && Math.abs(bldTop(p) - o.lv) < 0.12 && bldTouch(o.col, p.col, 0.16)) return true;
+  return false;
+}
 function bldAdd(q){
   if (!BP[q.k] || BUILT.some(o => o.id === q.id)) return null;
-  const sp = BP[q.k], bx = bldBox(q.k, q.x, q.z, q.ax);
-  const b = {type:'bld', id:q.id, k:q.k, x:q.x, y:q.y, z:q.z, ax:q.ax, hp:q.hp === undefined ? sp.hp : q.hp, mx:sp.hp, o:q.o ? 1 : 0, wob:0, hpCh:false};
-  const elev = b.y > terrainAt(b.x, b.z) + 0.6, wall = !sp.low && !sp.plat;
-  b.col = {x1:bx.x1, x2:bx.x2, z1:bx.z1, z2:bx.z2, b:elev ? b.y - 0.05 : -50, h:b.y + sp.h, nt:wall, bld:b};
-  addCol(b.col, wall); b.col.w = wall; if (b.o) b.col.off = true;
+  const sp = BP[q.k], bx = bldBox(q.k, q.x, q.z, q.ax), flat = q.ax === 'f';
+  const b = {type:'bld', id:q.id, k:q.k, x:q.x, y:q.y, z:q.z, ax:q.ax, dir:q.dir || 0, hp:q.hp === undefined ? sp.hp : q.hp, mx:sp.hp, o:q.o ? 1 : 0, wob:0, hpCh:false, H:flat ? FLAT_H : sp.h};
+  b.lv = flat ? b.y + FLAT_H : b.y;
+  b.gr = Math.abs(bldGround(b.x, b.z, b.y + 0.6) - b.y) < 0.35;
+  const elev = b.y > terrainAt(b.x, b.z) + 0.6, wall = !sp.low && !sp.plat && !flat && !sp.stair;
+  b.col = {x1:bx.x1, x2:bx.x2, z1:bx.z1, z2:bx.z2, b:flat ? b.y - 0.02 : elev ? b.y - 0.05 : -50, h:b.y + b.H, nt:wall, bld:b};
+  if (sp.stair){
+    // escada: só degraus (dá para andar por baixo); cada degrau é um piso fino
+    b.plats = []; const yaw = b.dir * Math.PI / 2, cs = Math.cos(yaw), sn = Math.sin(yaw);
+    for (let i = 0; i < 8; i++){ const lz = -1 + 0.25 * i + 0.125, cx = b.x + lz * sn, cz = b.z + lz * cs, hx = Math.abs(cs) > 0.5 ? 0.86 : 0.13, hz = Math.abs(cs) > 0.5 ? 0.13 : 0.86;
+      const p = {x1:cx - hx, x2:cx + hx, z1:cz - hz, z2:cz + hz, top:b.y + 0.3 * (i + 1), bld:b}; addPlat(p); b.plats.push(p); }
+  } else { addCol(b.col, wall); b.col.w = false; if (b.o) b.col.off = true; }
   b.g = bldMesh(b); scene.add(b.g); bldTint(b);
   BUILT.push(b);
   return b;
 }
-function bldUncol(c){
-  const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1);
+function bldUncol(b){
+  if (b.plats){ for (const p of b.plats){ const i = platforms.indexOf(p); if (i >= 0) platforms.splice(i, 1); cellsOf(p, k => { const a = pgrid.get(k); if (a){ const j = a.indexOf(p); if (j >= 0) a.splice(j, 1); } }); } return; }
+  const c = b.col, i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1);
   cellsOf(c, k => { const a = grid.get(k); if (a){ const j = a.indexOf(c); if (j >= 0) a.splice(j, 1); } });
 }
+// how: 'z' zumbis, 'b' tiros, 'c' desabou (sem apoio), 'd' desmontada
 function bldDel(b, how){
   const i = BUILT.indexOf(b); if (i < 0) return;
-  BUILT.splice(i, 1); bldUncol(b.col); scene.remove(b.g); b.mw.dispose(); b.mm.dispose();
+  BUILT.splice(i, 1); b.dead = true; bldUncol(b); scene.remove(b.g); b.mw.dispose(); b.mm.dispose();
   for (const z of zombies) if (z.bang === b) z.bang = null;
   if (BLD.act && BLD.act.b === b) BLD.act = null;
-  const sp = BP[b.k], dp = Math.hypot(P.x - b.x, P.z - b.z), along = b.ax === 'x';
+  const sp = BP[b.k], dp = Math.hypot(P.x - b.x, P.z - b.z), along = b.ax === 'x', wide = b.ax === 'f' || sp.plat || sp.stair;
   debrisMats();
-  for (let n = 0; n < (how === 'z' ? 12 : 5); n++) debris(b.x + (along ? R(-0.9, 0.9) : R(-0.2, 0.2)), b.y + R(0.2, sp.h), b.z + (along ? R(-0.2, 0.2) : R(-0.9, 0.9)), woodMat, R(0.05, 0.12));
-  if (how === 'z'){
-    sfx('door_break', 1, b.x, b.z, 0.8, 60) || noiseSnd(0.6, Math.max(0.05, 1 - dp / 50) * 0.6, 420); emitNoise(b.x, b.z, 16);
-    if (dp < 45) log('⚠ Os zumbis DERRUBARAM ' + sp.art + ' ' + sp.nome.toLowerCase() + '!', '#ff5a4a');
-  } else if (how === 'd') sfx('door_hit', 0.5, b.x, b.z, 0.8) || noiseSnd(0.2, 0.2, 300);
+  for (let n = 0; n < (how === 'd' ? 5 : 12); n++) debris(b.x + (along || wide ? R(-0.9, 0.9) : R(-0.2, 0.2)), b.y + R(0.1, b.H), b.z + (along && !wide ? R(-0.2, 0.2) : R(-0.9, 0.9)), woodMat, R(0.05, 0.12));
+  if (how === 'd'){ sfx('door_hit', 0.5, b.x, b.z, 0.8) || noiseSnd(0.2, 0.2, 300); }
+  else {
+    sfx('door_break', how === 'c' ? 0.7 : 1, b.x, b.z, how === 'c' ? 0.7 : 0.8, 60) || noiseSnd(0.6, Math.max(0.05, 1 - dp / 50) * 0.6, 420); emitNoise(b.x, b.z, 16);
+    if (dp < 45){ const nm = sp.art + ' ' + (b.ax === 'f' ? 'piso' : sp.nome.toLowerCase());
+      if (how === 'z') log('⚠ Os zumbis DERRUBARAM ' + nm + '!', '#ff5a4a'); else if (how === 'b') log('Os tiros destruíram ' + nm + '.', '#ffb070'); else if (!BLD.fallMsg){ BLD.fallMsg = 1; log('Peças sem apoio desabaram!', '#ffb070'); setTimeout(() => BLD.fallMsg = 0, 1500); } }
+  }
   BLD.chkT = 0;
 }
-function bldSer(b){ return [b.id, BORD.indexOf(b.k), r2(b.x), r2(b.y), r2(b.z), b.ax === 'z' ? 1 : 0, Math.round(b.hp), b.o ? 1 : 0]; }
-function bldDe(q){ return {id:q[0], k:BORD[q[1]], x:q[2], y:q[3], z:q[4], ax:q[5] ? 'z' : 'x', hp:q[6], o:q[7]}; }
+// quem decide a queda (solo, anfitrião ou quem desmontou) derruba também o que ficou sem apoio e avisa a sala
+function bldBreak(b, how){
+  bldDel(b, how); netSend({t:'bx', id:b.id, k:how});
+  for (let it = 0; it < 40; it++){
+    const f = BUILT.filter(o => !bldSupported(o)); if (!f.length) break;
+    for (const o of f){ bldDel(o, 'c'); netSend({t:'bx', id:o.id, k:'c'}); }
+  }
+}
+const AXC = {x:0, z:1, f:2}, AXN = ['x', 'z', 'f'];
+function bldSer(b){ return [b.id, BORD.indexOf(b.k), r2(b.x), r2(b.y), r2(b.z), AXC[b.ax], Math.round(b.hp), b.o ? 1 : 0, b.dir || 0]; }
+function bldDe(q){ return {id:q[0], k:BORD[q[1]], x:q[2], y:q[3], z:q[4], ax:AXN[q[5]] || 'x', hp:q[6], o:q[7], dir:q[8] || 0}; }
 const bldHasHammer = () => P.inv.some(i => i.id === 'martelo');
+const bldName = (k, ax) => ax === 'f' ? (k === 'reforco' ? 'Piso reforçado' : 'Piso de madeira') : BP[k].nome;
 function bldFalta(k){
   if (CFG.buildFree) return '';
   if (!bldHasHammer()) return 'Precisa de um MARTELO na mochila (casas, ferragens, garagens).';
@@ -4999,57 +5056,106 @@ function bldFalta(k){
 }
 // onde a peça vai ficar: na frente do jogador, presa na grade
 function bldSpot(){
-  const k = BORD[BLD.k], sp = BP[k], fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), d = sp.plat ? 2.5 : 2.0;
+  const k = BORD[BLD.k], sp = BP[k], rot = BLD.rot % bldRotN(k), fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+  const cellK = sp.plat || sp.stair || (sp.flat && rot === 2), d = cellK ? 2.5 : 2.0;
   const tx = P.x + fx * d, tz = P.z + fz * d, cell = v => Math.floor(v / BG) * BG + BG / 2, line = v => Math.round(v / BG) * BG;
-  if (sp.plat) return {k, x:cell(tx), z:cell(tz), ax:'x'};
-  const alongX = (Math.abs(fz) >= Math.abs(fx)) !== !!(BLD.rot & 1);
+  if (sp.stair){ const base = Math.abs(fz) >= Math.abs(fx) ? (fz > 0 ? 0 : 2) : (fx > 0 ? 1 : 3); return {k, x:cell(tx), z:cell(tz), ax:'x', dir:(base + rot) % 4}; }
+  if (cellK) return {k, x:cell(tx), z:cell(tz), ax:sp.flat ? 'f' : 'x'};
+  const alongX = (Math.abs(fz) >= Math.abs(fx)) !== !!(rot & 1);
   return alongX ? {k, x:cell(tx), z:line(tz), ax:'x'} : {k, x:line(tx), z:cell(tz), ax:'z'};
 }
+// escolhe a altura (chão ou topo de uma peça encostada) e confere se dá para construir. Devolve '' ou o motivo.
 function bldCheck(s){
-  const sp = BP[s.k], b = bldBox(s.k, s.x, s.z, s.ax), lx = b.x2 - b.x1, lz = b.z2 - b.z1;
-  let lo = 1e9, hi = -1e9; GNOVEH = true;
-  for (const [u, v] of [[0, 0], [0.45, 0.45], [-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45]]){ const g = groundAt(s.x + u * lx, s.z + v * lz, 0.05, P.y + 0.6); lo = Math.min(lo, g); hi = Math.max(hi, g); }
-  GNOVEH = false; s.y = lo;
-  if (hi - lo > 0.9) return 'O chão aqui é muito torto.';
-  if (Math.abs(lo - P.ground) > 1.6) return 'Fique na mesma altura de onde quer construir.';
-  // mesma vaga = sobreposição grande nos dois eixos (encostar no canto de outra peça pode)
-  for (const o of BUILT){ const c = o.col; if (Math.abs(o.y - lo) > 1.2) continue;
-    const ox = Math.min(b.x2, c.x2) - Math.max(b.x1, c.x1), oz = Math.min(b.z2, c.z2) - Math.max(b.z1, c.z1);
-    if (ox > 0.6 * Math.min(lx, c.x2 - c.x1) && oz > 0.6 * Math.min(lz, c.z2 - c.z1)) return 'Já tem uma peça aqui.'; }
-  const pts = []; const ins = 0.3;
-  if (sp.plat){ for (const u of [-0.6, 0, 0.6]) for (const v of [-0.6, 0, 0.6]) pts.push([s.x + u, s.z + v]); }
-  else for (let t = -1; t <= 1; t += 0.5){ const off = t * (Math.max(lx, lz) / 2 - ins); pts.push(s.ax === 'x' ? [s.x + off, s.z] : [s.x, s.z + off]); }
-  for (const [px, pz] of pts){
-    if (onRail(px, pz, 0.6)) return 'Não dá para construir em cima do trilho.';
-    if (hitAny(px, pz, 0.1, lo + 0.35)) return 'Tem alguma coisa no caminho.';
+  const sp = BP[s.k], flat = s.ax === 'f', H = flat ? FLAT_H : sp.h, b = bldBox(s.k, s.x, s.z, s.ax), lx = b.x2 - b.x1, lz = b.z2 - b.z1;
+  let lo = 1e9, hi = -1e9;
+  for (const [u, v] of [[0, 0], [0.45, 0.45], [-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45]]){ const g = bldGround(s.x + u * lx, s.z + v * lz, P.y + 0.6); lo = Math.min(lo, g); hi = Math.max(hi, g); }
+  const cands = [];
+  if (hi - lo <= 0.9) cands.push({L:flat ? lo + FLAT_H : lo, gr:true});
+  for (const o of BUILT) if (bldTouch(b, o.col, 0.16)) cands.push({L:bldTop(o), gr:false});
+  cands.sort((p, q) => p.L - q.L);
+  const up = P.pitch > 0.3, minL = P.ground + (up ? 1.0 : -1.0), maxL = P.ground + BLD_REACH;
+  let pick = null, sawHigh = false, sawBusy = false;
+  for (const c of cands){
+    if (c.L < minL - 0.01) continue; if (c.L > maxL){ sawHigh = true; continue; }
+    const y0 = flat ? c.L - FLAT_H : c.L;
+    if (BUILT.some(o => bldClash(b, y0, y0 + H, o))){ sawBusy = true; continue; }
+    pick = c; break;
   }
-  const inB = (x, z, r) => x + r > b.x1 && x - r < b.x2 && z + r > b.z1 && z - r < b.z2;
-  if (inB(P.x, P.z, 0.36) && P.y < lo + sp.h + 0.2) return 'Você está no lugar da peça. Dê um passo para trás.';
-  for (const z of zombies) if (inB(z.x, z.z, 0.3) && Math.abs(z.y - lo) < 2.5) return 'Tem um zumbi no lugar.';
-  if (NET.on) for (const p of NET.peers.values()) if (p.rp && inB(p.rp.x, p.rp.z, 0.36) && Math.abs(p.rp.y - lo) < 2.5) return 'Tem um amigo no lugar.';
+  s.y = pick ? (flat ? pick.L - FLAT_H : pick.L) : lo; s.lv = pick ? pick.L : lo;
+  if (!pick){
+    if (sawHigh) return 'Alto demais daqui: suba mais perto (escada, plataforma ou piso) para construir lá em cima.';
+    if (sawBusy) return 'Já tem uma peça aqui. Olhe para cima para empilhar mais alto.';
+    if (hi - lo > 0.9) return 'O chão aqui é muito torto.';
+    return up ? 'Nada para apoiar a peça lá em cima. Construa uma parede, plataforma ou escada embaixo.' : 'Nada para apoiar a peça aqui.';
+  }
+  if (s.lv - lo > BLD_MAXH) return 'Alto demais (o limite é ' + BLD_MAXH + ' m do chão).';
+  const pts = [], ins = 0.3;
+  if (flat || sp.plat || sp.stair){ for (const u of [-0.6, 0, 0.6]) for (const v of [-0.6, 0, 0.6]) pts.push([s.x + u, s.z + v]); }
+  else for (let t = -1; t <= 1; t += 0.5){ const off = t * (Math.max(lx, lz) / 2 - ins); pts.push(s.ax === 'x' ? [s.x + off, s.z] : [s.x, s.z + off]); }
+  const feet = flat ? s.y + 0.06 : s.y + 0.35;
+  for (const [px, pz] of pts){
+    if (pick.gr && onRail(px, pz, 0.6)) return 'Não dá para construir em cima do trilho.';
+    if (hitAny(px, pz, 0.1, feet)) return 'Tem alguma coisa no caminho.';
+  }
+  const y0 = s.y, y1 = s.y + H, inB = (x, z, r, y) => x + r > b.x1 && x - r < b.x2 && z + r > b.z1 && z - r < b.z2 && y < y1 - 0.05 && y + 1.75 > y0 + 0.05;
+  if (!sp.stair && inB(P.x, P.z, 0.36, P.y)) return 'Você está no lugar da peça. Dê um passo para trás.';
+  for (const z of zombies) if (inB(z.x, z.z, 0.3, z.y)) return 'Tem um zumbi no lugar.';
+  if (NET.on) for (const p of NET.peers.values()) if (p.rp && inB(p.rp.x, p.rp.z, 0.36, p.rp.y)) return 'Tem um amigo no lugar.';
   return '';
 }
-// peça para onde o jogador está olhando (desmontar, portão)
+// peça para onde o jogador está olhando (desmontar, consertar, portão): a mais perto na mira, contando a altura
 function bldAimed(range){
-  range = range || 2.6; const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bt = range;
+  range = range || 2.6; const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), tp = Math.tan(clamp(P.pitch, -1.2, 1.2)); let best = null, bs = 1e9;
   for (const b of BUILT){
-    if (Math.abs(b.x - P.x) > range + 2 || Math.abs(b.z - P.z) > range + 2 || P.y < b.y - 1.6 || P.y > b.y + BP[b.k].h + 0.4) continue;
+    if (Math.abs(b.x - P.x) > range + 2 || Math.abs(b.z - P.z) > range + 2 || bldTop(b) < P.y - 3 || b.y > P.y + 5) continue;
     const c = b.col, r = segBoxT(P.x, P.z, P.x + fx * range, P.z + fz * range, {x1:c.x1 - 0.15, x2:c.x2 + 0.15, z1:c.z1 - 0.15, z2:c.z2 + 0.15});
-    if (r && r[0] * range < bt){ bt = r[0] * range; best = b; }
+    if (!r) continue;
+    const t = r[0] * range, ya = P.y + 1.55 + tp * Math.max(0.3, t), dy = ya < b.y ? b.y - ya : ya > bldTop(b) ? ya - bldTop(b) : 0, sc = t + dy * 2.5;
+    if (dy < 1.4 && sc < bs){ bs = sc; best = b; }
+  }
+  return best;
+}
+// tiro atravessando uma peça (3D): a mais perto antes de tmax
+function bldRay(o, hx, hz, tp, tmax){
+  let best = null;
+  for (const b of BUILT){
+    if (b.plats || b.col.off || Math.abs(b.x - o.x) > tmax + 3 || Math.abs(b.z - o.z) > tmax + 3) continue;
+    const c = b.col; let t0 = 0, t1 = tmax, ok = true;
+    for (const [p0, d, lo, hi] of [[o.x, hx, c.x1, c.x2], [o.z, hz, c.z1, c.z2], [o.y, tp, b.y, bldTop(b)]]){
+      if (Math.abs(d) < 1e-9){ if (p0 < lo || p0 > hi){ ok = false; break; } continue; }
+      let ta = (lo - p0) / d, tb = (hi - p0) / d; if (ta > tb){ const q = ta; ta = tb; tb = q; }
+      t0 = Math.max(t0, ta); t1 = Math.min(t1, tb); if (t0 > t1){ ok = false; break; }
+    }
+    if (ok && (!best || t0 < best.t)) best = {b, t:t0};
   }
   return best;
 }
 const bldPct = b => Math.max(1, Math.round(b.hp / b.mx * 100));
+const bldHost = () => !(NET.on && NET.role === 'join');
+function bldDamage(b, d, how){
+  b.hp -= d; b.hpCh = true; bldTint(b);
+  if (b.hp <= 0 && bldHost()) bldBreak(b, how);
+}
+// tiro do jogador numa peça: madeira aguenta bem mais que porta, a reforçada mais ainda
+function bldShot(b, raw, x, y, z){
+  const d = raw * (BP[b.k].metal ? 0.07 : BP[b.k].low ? 0.2 : 0.14);
+  debrisMats(); for (let i = 0; i < 2; i++) debris(x, y, z, woodMat, 0.04);
+  sfx('door_hit', 0.25, b.x, b.z, R(1.1, 1.3)) || noiseSnd(0.06, 0.08, 500);
+  b.wob = Math.max(b.wob, 0.12);
+  if (!bldHost()) netSend({t:'bd', id:b.id, d:Math.round(d * 10) / 10});
+  bldDamage(b, d, 'b');
+  if (b.hp > 0 && !(b.hpShowT > 0)){ b.hpShowT = 0.6; showEntHp(bldName(b.k, b.ax) + ' — resistência ' + bldPct(b) + '%', bldPct(b)); }
+}
 
 // ---------- modo construção ----------
 function bldToggle(force){
   const on = force === undefined ? !BLD.on : force;
   if (on === BLD.on) return;
   if (on && (P.dead || P.car)){ log('Saia do carro para construir.', '#ffd27a'); return; }
-  BLD.on = on; BLD.act = null; BLD.chkT = 0; BLD.barKey = '';
+  BLD.on = on; if (BLD.act && BLD.act.kind !== 'f') BLD.act = null; BLD.chkT = 0; BLD.barKey = '';
   if (on){
     const h = P.inv.find(i => i.id === 'martelo'); BLD.prevEq = P.equip; if (h && P.equip !== h) equip(h);
-    log('🔨 Modo construção. ' + (isTouch ? 'CONSTRUIR põe a peça, GIRAR vira, PEÇA troca, DESMONTAR tira.' : 'Clique põe a peça · R gira · Q ou rodinha troca a peça · X desmonta · B sai.'), '#e0c08a');
+    log('🔨 Modo construção. ' + (isTouch ? 'CONSTRUIR põe a peça, GIRAR vira/deita, PEÇA troca, DESMONTAR tira, USAR conserta.' : 'Clique põe a peça · R gira/deita · Q ou rodinha troca · E conserta · X desmonta · B sai.') + ' Olhe para cima para construir no alto.', '#e0c08a');
     if (!CFG.buildFree && !bldHasHammer()) log('Você precisa de um MARTELO para construir.', '#ffb070');
   } else {
     const h = P.inv.find(i => i.id === 'martelo'); if (P.equip === h && BLD.prevEq !== h && (BLD.prevEq === null || P.inv.indexOf(BLD.prevEq) >= 0)) equip(BLD.prevEq);
@@ -5061,12 +5167,16 @@ function bldToggle(force){
 }
 function bldCycle(d){ BLD.k = (BLD.k + d + BORD.length) % BORD.length; BLD.chkT = 0; toneSnd(900, 900, 0.03, 0.03, 'square'); bldBar(); }
 function bldSelect(i){ if (i >= 0 && i < BORD.length){ BLD.k = i; BLD.chkT = 0; bldBar(); } }
-function bldRotate(){ BLD.rot = (BLD.rot + 1) & 1; BLD.chkT = 0; toneSnd(700, 700, 0.03, 0.03, 'square'); }
+function bldRotate(){
+  const k = BORD[BLD.k], n = bldRotN(k); if (n < 2) return;
+  BLD.rot = (BLD.rot % n + 1) % n; BLD.chkT = 0; BLD.barKey = ''; toneSnd(700, 700, 0.03, 0.03, 'square');
+  if (BP[k].flat) log(BLD.rot === 2 ? 'Parede DEITADA: vira piso (chão em cima das paredes, teto, andar da torre).' : 'Parede em pé' + (BLD.rot ? ' (girada).' : '.'), '#c9c0a8');
+}
 function bldKey(k){
   if (k === 'KeyR'){ bldRotate(); return true; }
   if (k === 'KeyQ'){ bldCycle(1); return true; }
   if (k === 'KeyX'){ bldDismantle(); return true; }
-  if (/^Digit[1-5]$/.test(k)){ bldSelect(+k[5] - 1); return true; }
+  if (/^Digit[1-6]$/.test(k)){ bldSelect(+k[5] - 1); return true; }
   return false;
 }
 function bldStart(){
@@ -5080,33 +5190,52 @@ function bldDismantle(){
   const b = bldAimed(2.8); if (!b){ log('Mire numa peça construída para desmontar.', '#ffd27a'); return; }
   BLD.act = {kind:'d', t:0, dur:1.6, b, x0:P.x, z0:P.z, nT:0};
 }
+// conserto com o martelo: +35% da resistência por vez, gasta 1 tábua e 2 pregos
+function bldFixFalta(){
+  if (CFG.buildFree) return '';
+  if (!bldHasHammer()) return 'Precisa de um MARTELO para consertar.';
+  for (const m in FIX_COST) if ((P.mat[m] || 0) < FIX_COST[m]) return 'Para consertar: ' + FIX_COST.tabua + ' tábua e ' + FIX_COST.prego + ' pregos (faltam ' + MATN[m] + ').';
+  return '';
+}
+function bldFixStart(b){
+  if (BLD.act || panel || P.climb) return;
+  if (b.hp >= b.mx - 1){ log('Essa peça está inteira.', '#9fe09a'); return; }
+  const why = bldFixFalta(); if (why){ log(why, '#ffd27a'); return; }
+  BLD.act = {kind:'f', t:0, dur:1.5, b, x0:P.x, z0:P.z, nT:0};
+}
 function bldHammer(){ sfx('door_hit', 0.28, undefined, undefined, R(1.5, 1.8)) || (toneSnd(R(700, 900), 300, 0.05, 0.08, 'square'), noiseSnd(0.05, 0.12, 1800)); swingT = 1; emitNoise(P.x, P.z, 13); }
 function bldActUpdate(dt){
   const a = BLD.act, box = $('#act'); if (!a) return;
   const lbl = box.firstElementChild;
   const stop = msg => { BLD.act = null; box.style.display = 'none'; lbl.textContent = 'Arrombando...'; if (msg) log(msg, '#ffd27a'); };
-  if (Math.hypot(P.x - a.x0, P.z - a.z0) > 0.8 || P.dead || P.car || (a.kind === 'd' && BUILT.indexOf(a.b) < 0)){ stop('Construção interrompida.'); return; }
+  if (Math.hypot(P.x - a.x0, P.z - a.z0) > 0.8 || P.dead || P.car || (a.b && BUILT.indexOf(a.b) < 0)){ stop(a.kind === 'f' ? 'Conserto interrompido.' : 'Construção interrompida.'); return; }
   if (panel) return;
-  a.t += dt; a.nT -= dt; if (a.nT <= 0){ a.nT = 0.36; bldHammer(); }
-  box.style.display = 'block'; lbl.textContent = a.kind === 'b' ? 'Construindo: ' + BP[a.s.k].nome + '...' : 'Desmontando: ' + BP[a.b.k].nome + '...';
+  a.t += dt; a.nT -= dt; if (a.nT <= 0){ a.nT = 0.36; bldHammer(); if (a.b) a.b.wob = 0.12; }
+  box.style.display = 'block'; lbl.textContent = a.kind === 'b' ? 'Construindo: ' + bldName(a.s.k, a.s.ax) + '...' : a.kind === 'f' ? 'Consertando: ' + bldName(a.b.k, a.b.ax) + '...' : 'Desmontando: ' + bldName(a.b.k, a.b.ax) + '...';
   $('#actB').style.width = Math.min(100, a.t / a.dur * 100) + '%';
   if (a.t < a.dur) return;
   stop();
   if (a.kind === 'b'){
     const s = a.s, why = bldFalta(s.k) || bldCheck(s); if (why){ log(why, '#ffd27a'); return; }
     if (!CFG.buildFree){ const c = BP[s.k].custo; for (const m in c) P.mat[m] -= c[m]; }
-    const b = bldAdd({id:rid(7), k:s.k, x:s.x, y:s.y, z:s.z, ax:s.ax});
-    if (b){ netSend({t:'bp', b:bldSer(b)}); sfx('door_close', 0.45, undefined, undefined, 0.8) || toneSnd(200, 120, 0.15, 0.06, 'triangle'); log('Construiu: ' + BP[s.k].nome + '.', '#9fe09a'); }
+    const b = bldAdd({id:rid(7), k:s.k, x:s.x, y:s.y, z:s.z, ax:s.ax, dir:s.dir});
+    if (b){ netSend({t:'bp', b:bldSer(b)}); sfx('door_close', 0.45, undefined, undefined, 0.8) || toneSnd(200, 120, 0.15, 0.06, 'triangle'); log('Construiu: ' + bldName(s.k, s.ax) + (b.gr ? '' : ' (a ' + (b.lv - bldGround(b.x, b.z, b.y + 0.6)).toFixed(1).replace('.', ',') + ' m do chão)') + '.', '#9fe09a'); }
+  } else if (a.kind === 'f'){
+    const b = a.b, why = bldFixFalta(); if (why){ log(why, '#ffd27a'); return; }
+    if (!CFG.buildFree) for (const m in FIX_COST) P.mat[m] -= FIX_COST[m];
+    const add = Math.round(b.mx * FIX_K); b.hp = Math.min(b.mx, b.hp + add); b.hpCh = true; bldTint(b); netSend({t:'bf', id:b.id, a:add});
+    sfx('door_close', 0.4, undefined, undefined, 0.9) || toneSnd(260, 200, 0.12, 0.05, 'triangle');
+    showEntHp(bldName(b.k, b.ax) + ' — resistência ' + bldPct(b) + '%', bldPct(b)); log('Consertou: ' + bldName(b.k, b.ax) + ' (' + bldPct(b) + '%).', '#9fe09a');
   } else {
     const b = a.b, c = BP[b.k].custo, k = b.hp / b.mx; let back = [];
     if (!CFG.buildFree) for (const m in c){ const n = Math.floor(c[m] * 0.5 * (0.4 + 0.6 * k)); if (n > 0){ P.mat[m] = (P.mat[m] || 0) + n; back.push(n + ' ' + MATN[m]); } }
-    bldDel(b, 'd'); netSend({t:'bx', id:b.id, k:'d'});
-    log('Desmontou: ' + BP[b.k].nome + (back.length ? ' (+' + back.join(', ') + ')' : '') + '.', '#9fe09a');
+    const nm = bldName(b.k, b.ax); bldBreak(b, 'd');
+    log('Desmontou: ' + nm + (back.length ? ' (+' + back.join(', ') + ')' : '') + '.', '#9fe09a');
   }
   BLD.barKey = ''; BLD.chkT = 0;
 }
-function bldGhostMesh(k){
-  const S = bldShape(k), M = bldMats(), g = new THREE.Group(), list = [];
+function bldGhostMesh(k, v){
+  const S = bldShape(k, v), M = bldMats(), g = new THREE.Group(), list = [];
   for (const geo of [S.w, S.m]) if (geo){ const m = new THREE.Mesh(geo, M.ok); g.add(m); list.push(m); }
   if (S.l){ const m = new THREE.Mesh(S.l, M.ok); m.position.x = -0.88; g.add(m); list.push(m); }
   g.userData.list = list; g.renderOrder = 6; return g;
@@ -5120,17 +5249,19 @@ function updateBuild(dt){
   bldActUpdate(dt);
   if (!BLD.on || P.dead){ if (BLD.ghost) BLD.ghost.visible = false; return; }
   if (P.car){ bldToggle(false); return; }
-  const s = bldSpot(), key = s.k + s.x + ',' + s.z + s.ax;
+  const s = bldSpot(), key = s.k + s.x + ',' + s.z + s.ax + (s.dir || 0) + (P.pitch > 0.3 ? 'u' : 'd') + Math.round(P.ground * 2);
   BLD.chkT -= dt;
   if (key !== BLD.gkey || BLD.chkT <= 0){
     BLD.chkT = 0.2;
-    if (!BLD.ghost || BLD.ghost.userData.k !== s.k){ if (BLD.ghost) scene.remove(BLD.ghost); BLD.ghost = bldGhostMesh(s.k); BLD.ghost.userData.k = s.k; scene.add(BLD.ghost); }
     const why = bldFalta(s.k) || bldCheck(s); BLD.ok = !why; BLD.why = why; BLD.spot = s; BLD.gkey = key;
-    if (s.y === undefined){ GNOVEH = true; s.y = groundAt(s.x, s.z, 0.05, P.y + 0.6); GNOVEH = false; }
+    if (s.y === undefined) bldCheck(s);
+    const v = s.ax === 'f' ? 'f' : Math.abs(bldGround(s.x, s.z, s.y + 0.6) - s.y) < 0.35 ? 'g' : 'e', gk2 = s.k + v;
+    if (!BLD.ghost || BLD.ghost.userData.k !== gk2){ if (BLD.ghost) scene.remove(BLD.ghost); BLD.ghost = bldGhostMesh(s.k, v); BLD.ghost.userData.k = gk2; scene.add(BLD.ghost); }
     const mat = BLD.ok ? bldMats().ok : bldMats().bad; for (const m of BLD.ghost.userData.list) m.material = mat;
     BLD.aim = bldAimed(2.8); bldWhy();
   }
-  const g = BLD.ghost, q = BLD.spot; g.visible = !BLD.act || BLD.act.kind === 'b'; g.position.set(q.x, q.y + 0.01, q.z); g.rotation.y = q.ax === 'z' ? Math.PI / 2 : 0;
+  const g = BLD.ghost, q = BLD.spot; g.visible = !BLD.act || BLD.act.kind === 'b'; g.position.set(q.x, q.y + 0.01, q.z);
+  g.rotation.y = BP[q.k].stair ? q.dir * Math.PI / 2 : q.ax === 'z' ? Math.PI / 2 : 0;
   bldBar();
 }
 
@@ -5138,7 +5269,7 @@ function updateBuild(dt){
 function bldBlocking(x, z, y){
   let best = null, bd = 1.0;
   for (const b of BUILT){
-    if (b.o || Math.abs(b.x - x) > 3 || Math.abs(b.z - z) > 3 || Math.abs((y || 0) - b.y) > 1.5) continue;
+    if (b.o || b.plats || b.ax === 'f' || Math.abs(b.x - x) > 3 || Math.abs(b.z - z) > 3 || Math.abs((y || 0) - b.y) > 1.5) continue;
     const c = b.col, d = Math.hypot(x - clamp(x, c.x1, c.x2), z - clamp(z, c.z1, c.z2)); if (d < bd){ bd = d; best = b; }
   }
   return best ? {b:best, d:bd} : null;
@@ -5146,17 +5277,16 @@ function bldBlocking(x, z, y){
 function bldBang(z, dt, dp){
   const b = z.bang, c = b.col, qx = clamp(z.x, c.x1, c.x2), qz = clamp(z.z, c.z1, c.z2);
   if (b.o || BUILT.indexOf(b) < 0 || z.state === 'wander' || Math.hypot(z.x - qx, z.z - qz) > 1.3){ z.bang = null; return false; }
-  const host = !(NET.on && NET.role === 'join');
-  if (host){ b.hp -= dt * (z.big ? 14 : 6); b.hpCh = true; }
+  if (bldHost()){ b.hp -= dt * (z.big ? 14 : 6); b.hpCh = true; }
   if (dp < 5 && !P.agach && Math.abs(P.y - z.y) < 2) z.lost = Math.min(z.lost, 5);
   z.g.rotation.y = lerpAng(z.g.rotation.y, Math.atan2(qx - z.x, qz - z.z), dt * 6);
   z.bangT -= dt;
   if (z.bangT <= 0){
     z.bangT = R(0.55, 0.95); z.lunge = 0.3; b.wob = 0.22; bldTint(b);
     if (dp < 40) bangSnd(dp, false);
-    if (dp < 14 && !(b.hpShowT > 0)){ b.hpShowT = 1.2; showEntHp('⚠ ' + BP[b.k].nome + ' — resistência ' + bldPct(b) + '%', bldPct(b)); }
+    if (dp < 14 && !(b.hpShowT > 0)){ b.hpShowT = 1.2; showEntHp('⚠ ' + bldName(b.k, b.ax) + ' — resistência ' + bldPct(b) + '%', bldPct(b)); }
   }
-  if (host && b.hp <= 0){ bldDel(b, 'z'); netSend({t:'bx', id:b.id, k:'z'}); z.bang = null; }
+  if (bldHost() && b.hp <= 0){ bldBreak(b, 'z'); z.bang = null; }
   return true;
 }
 // ---------- portão e tábuas de porta quebrada ----------
@@ -5175,13 +5305,22 @@ function bldScrap(e){
   sfx('door_hit', 0.4, e.x, e.z, 1.3) || noiseSnd(0.15, 0.15, 400); emitNoise(P.x, P.z, 6);
   log('+2 tábuas da porta quebrada.', '#e0c08a');
 }
+// peça danificada na mira, para o E consertar (no modo construção vale também para o portão)
+function bldFixTarget(){
+  if (!BUILT.length || (!bldHasHammer() && !CFG.buildFree)) return null;
+  const b = bldAimed(2.4); if (!b || b.hp >= b.mx - 1) return null;
+  if (BP[b.k].gate && !BLD.on) return null;
+  return b;
+}
 // ---------- sala ----------
 function bldNet(m){
-  if (m.t === 'bp'){ const q = bldDe(m.b), b = bldAdd(q); if (b && Math.hypot(P.x - b.x, P.z - b.z) < 60){ const p = NET.peers.get(m.f); log((p && p.name ? p.name : 'Um amigo') + ' construiu: ' + BP[b.k].nome + '.', '#9fd4ff'); } BLD.chkT = 0; return; }
+  if (m.t === 'bp'){ const q = bldDe(m.b), b = bldAdd(q); if (b && Math.hypot(P.x - b.x, P.z - b.z) < 60){ const p = NET.peers.get(m.f); log((p && p.name ? p.name : 'Um amigo') + ' construiu: ' + bldName(b.k, b.ax) + '.', '#9fd4ff'); } BLD.chkT = 0; return; }
   if (m.t === 'bh'){ for (const [id, hp] of m.l || []){ const b = BUILT.find(o => o.id === id); if (b){ b.hp = hp; bldTint(b); } } return; }
   const b = BUILT.find(o => o.id === m.id); if (!b) return;
   if (m.t === 'bo') bldGate(b, !!m.o, false);
   else if (m.t === 'bx') bldDel(b, m.k);
+  else if (m.t === 'bf'){ b.hp = Math.min(b.mx, b.hp + (+m.a || 0)); b.hpCh = true; bldTint(b); }
+  else if (m.t === 'bd') bldDamage(b, +m.d || 0, 'b');
 }
 function bldNetTick(dt){
   if (NET.role !== 'host') return;
@@ -5192,20 +5331,23 @@ function bldNetTick(dt){
 // ---------- barra de construção (embaixo no PC, em cima no celular) ----------
 function bldWhy(){
   const el = $('#bldWhy'); if (!el) return;
-  const a = BLD.aim, aim = a ? ' · Mirando: ' + BP[a.k].nome + ' ' + bldPct(a) + '%' + (isTouch ? '' : ' (X desmonta)') : '';
-  el.innerHTML = BLD.ok ? '<span style="color:#9fe09a">✔ Pode construir aqui</span>' + aim : '<span style="color:#ff9a8a">✖ ' + BLD.why + '</span>' + aim;
+  const a = BLD.aim, aim = a ? ' · Mirando: ' + bldName(a.k, a.ax) + ' ' + bldPct(a) + '%' + (isTouch ? '' : a.hp < a.mx - 1 ? ' (E conserta · X desmonta)' : ' (X desmonta)') : '';
+  const s = BLD.spot, alt = s && s.lv !== undefined && BLD.ok ? (() => { const g = bldGround(s.x, s.z, s.y + 0.6), h = s.lv - (s.ax === 'f' ? FLAT_H : 0) - g; return h > 0.4 ? ' a ' + h.toFixed(1).replace('.', ',') + ' m do chão' : ''; })() : '';
+  el.innerHTML = BLD.ok ? '<span style="color:#9fe09a">✔ Pode construir aqui' + alt + '</span>' + aim : '<span style="color:#ff9a8a">✖ ' + BLD.why + '</span>' + aim;
 }
 function bldBar(){
   const el = $('#bldBar'); if (!el) return;
   if (!BLD.on || !running){ if (el.style.display !== 'none') el.style.display = 'none'; BLD.barKey = ''; return; }
-  const key = BLD.k + '|' + P.mat.tabua + '|' + P.mat.prego + '|' + P.mat.chapa + '|' + bldHasHammer() + '|' + CFG.buildFree;
+  const kk = BORD[BLD.k], rot = BLD.rot % bldRotN(kk);
+  const key = BLD.k + '|' + rot + '|' + P.mat.tabua + '|' + P.mat.prego + '|' + P.mat.chapa + '|' + bldHasHammer() + '|' + CFG.buildFree;
   if (key === BLD.barKey) return; BLD.barKey = key;
   el.style.display = 'block';
-  const cards = BORD.map((k, i) => { const sp = BP[k], c = sp.custo, cost = CFG.buildFree ? 'grátis' : Object.keys(c).map(m => c[m] + ' ' + MATN[m]).join(' · ');
-    return `<div class="bc${i === BLD.k ? ' on' : ''}${bldFalta(k) ? ' no' : ''}" data-i="${i}"><b>${isTouch ? '' : '<i>' + (i + 1) + '</i>'}${sp.nome}</b><span>${cost}</span></div>`; }).join('');
+  const cards = BORD.map((k, i) => { const sp = BP[k], c = sp.custo, cost = CFG.buildFree ? 'grátis' : Object.keys(c).map(m => c[m] + (isTouch ? ' ' + {tabua:'táb', prego:'pr', chapa:'ch'}[m] : ' ' + MATN[m])).join(isTouch ? ' ' : ' · ');
+    const nm = isTouch ? (i === BLD.k && sp.flat && rot === 2 ? 'Piso' : {parede:'Parede', reforco:'Reforçada', portao:'Portão', barricada:'Barricada', plataforma:'Plataforma', escada:'Escada'}[k]) : i === BLD.k && sp.flat && rot === 2 ? bldName(k, 'f') : sp.nome;
+    return `<div class="bc${i === BLD.k ? ' on' : ''}${bldFalta(k) ? ' no' : ''}" data-i="${i}"><b>${isTouch ? '' : '<i>' + (i + 1) + '</i>'}${nm}</b><span>${cost}</span></div>`; }).join('');
   const mats = CFG.buildFree ? 'Construção grátis (opção da sala)' : `🪵 ${P.mat.tabua} tábuas · 📌 ${P.mat.prego} pregos · 🔩 ${P.mat.chapa} chapas` + (bldHasHammer() ? ' · 🔨 martelo' : ' · <b style="color:#ff9a8a">sem martelo</b>');
   const keys = isTouch ? ''
-    : '<div class="bh"><b>Clique</b> construir · <b>R</b> girar · <b>Q</b>/rodinha/<b>1–5</b> peça · <b>X</b> desmontar · <b>E</b> abre portão · <b>B</b> sai</div>';
+    : '<div class="bh"><b>Clique</b> construir · <b>R</b> gira/deita · <b>Q</b>/rodinha/<b>1–6</b> peça · <b>E</b> conserta · <b>X</b> desmonta · <b>B</b> sai · olhe para <b>cima</b> para construir no alto</div>';
   el.innerHTML = `<div class="bt">🔨 CONSTRUÇÃO <span>${mats}</span></div><div class="bcs">${cards}</div><div id="bldWhy"></div>${keys}`;
   bldWhy();
 }
@@ -5474,7 +5616,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-15';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-17';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
@@ -5539,7 +5681,7 @@ function netOnMsg(m){
   if (t === 'c') return netApplyConts(m.c);
   if (t === 'vx') return netApplyVeh(m.v);
   if (t === 'ad') return netAnimalBite(m);
-  if (t === 'bp' || t === 'bo' || t === 'bh' || t === 'bx') return bldNet(m);
+  if (t === 'bp' || t === 'bo' || t === 'bh' || t === 'bx' || t === 'bf' || t === 'bd') return bldNet(m);
 }
 // ---------- carros iguais para todos ----------
 function netVehSig(v){ return [VEH.indexOf(v), r2(v.x), r2(v.y), r2(v.z), r2(v.yaw), Math.round(v.fuel), Math.round(v.hp)]; }
