@@ -92,7 +92,7 @@ body.tch #weap{display:none}
 .cfgr input[type=range]{width:170px}.cfgr .v{font-size:12px;color:#c9c0a8;min-width:34px;text-align:right}.cfgr select{background:#222;color:#eee;border:1px solid #555;padding:3px}
 .tab{background:#2a2620;border:1px solid #4a4236;color:#ddd;padding:5px 10px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:13px}.tab.on{background:#8e1d18;border-color:#c9322b;color:#fff}
 #crossC{position:absolute;left:50%;top:50%;width:300px;height:300px;margin:-150px 0 0 -150px;pointer-events:none}
-#gear{position:absolute;left:214px;top:12px;pointer-events:auto;background:rgba(0,0,0,.5);border:1px solid #555;color:#ddd;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:16px}
+#gear{position:fixed;z-index:55;display:none;left:214px;top:12px;pointer-events:auto;background:rgba(0,0,0,.5);border:1px solid #555;color:#ddd;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:16px}
 #stats,#moods,#clock,#weap,#hot,#mini,#log,#hint{zoom:var(--hs,1)}
 #mapC{width:100%;height:auto;max-height:66vh;object-fit:contain;touch-action:none;cursor:grab;background:#10140e}
 .panel .ft{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
@@ -4176,7 +4176,10 @@ function init(){
   $('#bGuide2').onclick = () => openGuide('pause');
   $('#bCfg').onclick = () => openCfg('start'); $('#bCfg2').onclick = () => openCfg('pause');
   $('#mpOpts').onclick = e => { e.stopPropagation(); cfgTab = ROOM_TAB; openCfg('start'); }; $('#bRoom2').onclick = e => { e.stopPropagation(); cfgTab = ROOM_TAB; openCfg('pause'); };
-  $('#gear').onclick = () => openCfg(paused ? 'pause' : 'game'); $('#cfgX').onclick = closePanel;
+  // a engrenagem fica por cima da tela de pausa (no PC, com o mouse preso na mira, Esc solta o mouse e aí dá para clicar; ou tecla O)
+  { const g = $('#gear'); document.body.appendChild(g); if (!isTouch){ g.textContent = '⚙ O'; g.title = 'Configurações (tecla O; aperte Esc para soltar o mouse)'; }
+    setInterval(() => { const on = getComputedStyle($('#hud')).display !== 'none' && panel !== 'cfg' && $('#dead').style.display !== 'flex' && !document.body.classList.contains('hudEd'); g.style.display = on ? 'block' : 'none'; }, 200); }
+  $('#gear').onclick = e => { e.stopPropagation(); openCfg(paused ? 'pause' : 'game'); }; $('#cfgX').onclick = closePanel;
   $('#cfgReset').onclick = () => { CFG = Object.assign({}, CFG_DEF); applyCfg(); renderCfg(); };
   $('#bResume').onclick = () => { lock(); if (isTouch){ paused = false; $('#pause').style.display = 'none'; } };
   $('#bRetry').onclick = () => { newGame(); start(); };
