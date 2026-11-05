@@ -226,9 +226,10 @@ const CFG_DEF = {crossStyle:'circulo', crossColor:'#ffffff', crossSize:1, crossT
   quality:'auto', viewDist:1, rainOn:true, blood:true, showMini:true, showMoods:true, showHot:true, hudScale:1,
   volMaster:0.8, volFx:1, volAmb:1, heartbeat:true, realSfx:true,
   zSpeed:1, zPop:1, zDmg:1, surround:true, dayLen:1, hordesOn:true, miniRotate:true, miniZoom:1,
-  diff:'normal', startH:8, nightLock:false, fogNight:1, rainMode:'auto', animals:1, hordeN:6, hordeSz:1, buildFree:false};
+  diff:'normal', startH:8, nightLock:false, dayLock:false, fogNight:1, rainMode:'auto', animals:1, hordeN:6, hordeSz:1, buildFree:false};
 let CFG = Object.assign({}, CFG_DEF);
 try { Object.assign(CFG, JSON.parse(localStorage.getItem('zm_cfg') || '{}')); } catch(e){}
+CFG.hordeN = clamp(Math.round(+CFG.hordeN || 6), 1, 12); CFG.hordeSz = [0.3, 0.5, 0.75, 1, 1.5, 2, 3].reduce((a, b) => Math.abs(b - CFG.hordeSz) < Math.abs(a - CFG.hordeSz) ? b : a, 1);
 function saveCfg(){ try { localStorage.setItem('zm_cfg', JSON.stringify(typeof NET !== 'undefined' && NET.myRoom ? Object.assign({}, CFG, NET.myRoom) : CFG)); } catch(e){} }
 const CFG_UI = [
   ['Mira', [['crossStyle', 'Estilo', 'sel', [['circulo', 'Círculo'], ['circulo_ponto', 'Círculo + ponto'], ['cruz', 'Cruz'], ['cruz_circulo', 'Cruz + círculo'], ['cruz_ponto', 'Cruz + ponto'], ['ponto', 'Só ponto']]],
@@ -239,14 +240,14 @@ const CFG_UI = [
   ['Gráficos', [['quality', 'Qualidade', 'sel', [['auto', 'Automática'], ['baixa', 'Baixa (mais rápido)'], ['media', 'Média'], ['alta', 'Alta']]], ['viewDist', 'Distância de visão', 'range', 0.5, 1.6, 0.05], ['rainOn', 'Efeito de chuva', 'chk'], ['blood', 'Sangue', 'chk'], ['showMini', 'Minimapa', 'chk'], ['miniRotate', 'Minimapa gira com o personagem', 'chk'], ['miniZoom', 'Zoom do minimapa', 'range', 0.5, 2.5, 0.1], ['showMoods', 'Indicadores de estado', 'chk'], ['showHot', 'Barra de armas', 'chk'], ['hudScale', 'Tamanho da interface', 'range', 0.7, 1.4, 0.05]]],
   ['Áudio', [['volMaster', 'Volume geral', 'range', 0, 1, 0.05], ['volFx', 'Efeitos', 'range', 0, 1, 0.05], ['volAmb', 'Ambiente (vento e chuva)', 'range', 0, 1, 0.05], ['heartbeat', 'Batimentos cardíacos', 'chk'], ['realSfx', 'Sons gravados (tiros, zumbis, portas, carro)', 'chk']]],
   ['Mundo / Sala', [['diff', 'Dificuldade', 'sel', [['facil', 'Fácil'], ['normal', 'Normal'], ['dificil', 'Difícil'], ['pesadelo', 'Pesadelo'], ['custom', 'Personalizada']]],
-    ['zPop', 'Quantidade de zumbis', 'range', 0.3, 3, 0.05], ['zSpeed', 'Velocidade dos zumbis', 'range', 0.5, 1.6, 0.05], ['zDmg', 'Dano dos zumbis', 'range', 0.3, 2.5, 0.05], ['surround', 'Morrer quando cercado (4+ zumbis)', 'chk'], ['hordesOn', 'Hordas', 'chk'], ['hordeN', 'Número de hordas', 'range', 1, 12, 1], ['hordeSz', 'Tamanho das hordas (×)', 'range', 0.3, 2, 0.1],
+    ['zPop', 'Quantidade de zumbis', 'range', 0.3, 3, 0.05], ['zSpeed', 'Velocidade dos zumbis', 'range', 0.5, 1.6, 0.05], ['zDmg', 'Dano dos zumbis', 'range', 0.3, 2.5, 0.05], ['surround', 'Morrer quando cercado (4+ zumbis)', 'chk'], ['hordesOn', 'Hordas', 'chk'], ['hordeN', 'Número de hordas', 'sel', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => [n, n + (n === 1 ? ' horda' : ' hordas')])], ['hordeSz', 'Tamanho das hordas', 'sel', [[0.3, 'Bem pequenas (0,3×)'], [0.5, 'Pequenas (0,5×)'], [0.75, 'Menores (0,75×)'], [1, 'Normal (1×)'], [1.5, 'Grandes (1,5×)'], [2, 'Enormes (2×)'], [3, 'Gigantes (3×)']]],
     ['startH', 'Horário (muda na hora)', 'sel', [[6, 'Amanhecer (6h)'], [8, 'Manhã (8h)'], [12, 'Meio-dia'], [17, 'Fim de tarde (17h)'], [20, 'Anoitecer (20h)'], [23, 'Noite (23h)'], [2, 'Madrugada (2h)']]],
-    ['nightLock', 'Noite eterna (sempre de noite)', 'chk'], ['dayLen', 'Duração do dia (×)', 'range', 0.5, 4, 0.25],
+    ['nightLock', 'Noite eterna (sempre de noite)', 'chk'], ['dayLock', 'Dia eterno (sempre de dia)', 'chk'], ['dayLen', 'Duração do dia (×)', 'range', 0.5, 4, 0.25],
     ['fogNight', 'Neblina à noite', 'sel', [[1, 'Normal'], [1.6, 'Forte'], [2.4, 'Muito forte']]], ['rainMode', 'Chuva', 'sel', [['auto', 'Vem e vai'], ['sempre', 'Sempre chovendo'], ['nunca', 'Nunca']]],
     ['animals', 'Animais para caçar', 'range', 0.5, 3, 0.1], ['buildFree', 'Construir sem gastar material (modo livre)', 'chk']], 'room']
 ];
 let cfgTab = 0, MASTER = null, FXG = null, AMBG = null;
-const ROOM_KEYS = ['diff', 'zPop', 'zSpeed', 'zDmg', 'surround', 'hordesOn', 'hordeN', 'hordeSz', 'startH', 'nightLock', 'dayLen', 'fogNight', 'rainMode', 'animals', 'buildFree'];
+const ROOM_KEYS = ['diff', 'zPop', 'zSpeed', 'zDmg', 'surround', 'hordesOn', 'hordeN', 'hordeSz', 'startH', 'nightLock', 'dayLock', 'dayLen', 'fogNight', 'rainMode', 'animals', 'buildFree'];
 const DIFFS = {facil:{zPop:0.6, zSpeed:0.8, zDmg:0.6, surround:false}, normal:{zPop:1, zSpeed:1, zDmg:1, surround:true}, dificil:{zPop:1.6, zSpeed:1.2, zDmg:1.4, surround:true}, pesadelo:{zPop:2.6, zSpeed:1.45, zDmg:2, surround:true}};
 const ROOM_TAB = CFG_UI.findIndex(t => t[2] === 'room');
 const roomLocked = () => typeof NET !== 'undefined' && NET.on && NET.role === 'join';
@@ -3762,6 +3763,9 @@ function applyCfg(key){
   if (key === 'diff' && DIFFS[CFG.diff]){ Object.assign(CFG, DIFFS[CFG.diff]); if (panel === 'cfg') renderCfg(); }
   else if (key && DIFFS[CFG.diff] && DIFFS[CFG.diff][key] !== undefined){ CFG.diff = 'custom'; const sl = document.querySelector('#cfgL [data-k="diff"]'); if (sl) sl.value = 'custom'; }
   if (key === 'startH' && P && !roomLocked()) gameMin = Math.floor(gameMin / 1440) * 1440 + CFG.startH * 60;
+  if (key === 'nightLock' && CFG.nightLock){ CFG.dayLock = false; const el = document.querySelector('#cfgL [data-k="dayLock"]'); if (el) el.checked = false; }
+  if (key === 'dayLock' && CFG.dayLock){ CFG.nightLock = false; const el = document.querySelector('#cfgL [data-k="nightLock"]'); if (el) el.checked = false; if (P && !roomLocked()){ const d0 = Math.floor(gameMin / 1440) * 1440, h = (gameMin - d0) / 60; if (h < 8 || h > 16.5) gameMin = d0 + (h > 16.5 ? 1440 : 0) + 8 * 60; } }
+  if ((key === 'hordesOn' || key === 'hordeN' || key === 'hordeSz') && running && P) resetHordes();
   if (key && ROOM_KEYS.includes(key) && typeof NET !== 'undefined' && NET.on && NET.role === 'host') netSend({t:'o', o:netRoomOpts()});
   saveCfg(); P && (P.crossKey = '');
   if (!key || key === 'quality'){ const q = CFG.quality; renderer.setPixelRatio(q === 'baixa' ? 0.7 : q === 'media' ? 1 : q === 'alta' ? Math.min(devicePixelRatio, 1.75) : Math.min(devicePixelRatio, isTouch ? 1 : 1.25)); renderer.setSize(innerWidth, innerHeight); }
@@ -4588,6 +4592,7 @@ function cullChunks(){
 function tickClock(dt){
   gameMin += dt * 2 / CFG.dayLen;
   if (CFG.nightLock && !roomLocked()){ const d0 = Math.floor(gameMin / 1440) * 1440, h = (gameMin - d0) / 60; if (h > 4.5 && h < 20.5) gameMin = d0 + 20.5 * 60; }
+  else if (CFG.dayLock && !roomLocked()){ const d0 = Math.floor(gameMin / 1440) * 1440, h = (gameMin - d0) / 60; if (h < 8 || h > 16.5) gameMin = d0 + (h > 16.5 ? 1440 : 0) + 8 * 60; }   // dia eterno: das 8h às 16h30, sem noite
 }
 function update(dt){
   tickClock(dt); updateLocation(dt); if (P.srch > 0) P.srch -= dt;
@@ -4741,6 +4746,27 @@ function loop(){
 }
 
 // ================= INÍCIO =================
+// hordas soltas pelo mapa (número e tamanho vêm das opções do mundo)
+function startHordes(){
+  if (CFG.hordesOn){ const q = n => Math.max(6, Math.round(n * CFG.zPop * (+CFG.hordeSz || 1)));
+    const H0 = SMALL ? [[100, 150, 9999, 'misto', 'cidade'], [20, 55, 85, 'misto', 'cidade'], [25, 120, 9999, 'lentos', 'floresta'], [15, 100, 9999, 'rapidos', 'cidade'], [30, 120, 9999, 'lentos', 'floresta'], [20, 120, 9999, 'rapidos', 'cidade']]
+      : [[100, 170, 9999, 'misto', 'cidade'], [20, 55, 85, 'misto', 'cidade'], [30, 120, 9999, 'lentos', 'cidade'], [40, 150, 9999, 'lentos', 'floresta'], [15, 100, 9999, 'rapidos', 'cidade'], [30, 150, 9999, 'rapidos', 'floresta']];
+    for (let i = 0; i < (+CFG.hordeN || 6); i++){ const h = H0[i] || [pick([15, 30, 60]), 120, 9999, pick(HTYPES), Math.random() < 0.35 ? 'floresta' : 'cidade']; spawnHorde(q(h[0]), false, h[1], h[2], h[3], h[4]); } }
+}
+// mudou as opções das hordas no meio do jogo: tira as hordas que estão longe e cria as novas na hora
+let hordeResetT = 0;
+function resetHordes(){
+  clearTimeout(hordeResetT);
+  hordeResetT = setTimeout(() => {
+    if (!running || !P || roomLocked()) return;
+    const near = z => Math.hypot(z.x - P.x, z.z - P.z) < 35 || (typeof NET !== 'undefined' && NET.on && [...NET.peers.values()].some(p => p.rp && Math.hypot(z.x - p.rp.x, z.z - p.rp.z) < 35));
+    for (let i = zombies.length - 1; i >= 0; i--){ const z = zombies[i]; if (!z.horde || z.rep) continue; if (z.state === 'chase' && near(z)){ z.horde = null; continue; } scene.remove(z.g); zombies.splice(i, 1); }
+    hordes = hordes.filter(h => h.aggro);
+    startHordes();
+    const n = hordes.filter(h => !h.aggro).length;
+    log(CFG.hordesOn ? 'Hordas atualizadas: ' + n + ' horda' + (n === 1 ? '' : 's') + ' (' + hordes.reduce((a, h) => a + h.n, 0) + ' zumbis). Veja no mapa (M).' : 'Hordas desligadas.', '#e0a0ff');
+  }, 500);
+}
 function newGame(seed){
   PILES = [];
   const RND0 = Math.random; if (seed !== undefined) Math.random = mulberry(seed);
@@ -4778,10 +4804,7 @@ function newGame(seed){
   gameMin = (CFG.startH === undefined ? 8 : CFG.startH) * 60;
   spawnAnimals();
   for (let i = 0; i < Math.round((SMALL ? 75 : 165) * CFG.zPop); i++) spawnZombie(28);
-  if (CFG.hordesOn){ const q = n => Math.max(6, Math.round(n * CFG.zPop * (+CFG.hordeSz || 1)));
-    const H0 = SMALL ? [[100, 150, 9999, 'misto', 'cidade'], [20, 55, 85, 'misto', 'cidade'], [25, 120, 9999, 'lentos', 'floresta'], [15, 100, 9999, 'rapidos', 'cidade'], [30, 120, 9999, 'lentos', 'floresta'], [20, 120, 9999, 'rapidos', 'cidade']]
-      : [[100, 170, 9999, 'misto', 'cidade'], [20, 55, 85, 'misto', 'cidade'], [30, 120, 9999, 'lentos', 'cidade'], [40, 150, 9999, 'lentos', 'floresta'], [15, 100, 9999, 'rapidos', 'cidade'], [30, 150, 9999, 'rapidos', 'floresta']];
-    for (let i = 0; i < (+CFG.hordeN || 6); i++){ const h = H0[i] || [pick([15, 30, 60]), 120, 9999, pick(HTYPES), Math.random() < 0.35 ? 'floresta' : 'cidade']; spawnHorde(q(h[0]), false, h[1], h[2], h[3], h[4]); } }
+  startHordes();
   // bairros com muitos infectados: zumbis a mais perambulando por lá
   for (const d of DISTRICTS){ const lv = dangerAt(d.x, d.z); if (lv < 2) continue; const want = Math.round((lv - 1) * (SMALL ? 10 : 20) * CFG.zPop);
     for (let i = 0, made = 0; i < want * 4 && made < want && zombies.length < HARDCAP; i++){ const x = d.x + R(-d.hw, d.hw), z = d.z + R(-d.hw, d.hw); if (Math.hypot(x - P.x, z - P.z) < 45 || inHouse(x, z, 0.5)) continue; const y = groundAt(x, z, 0.3, (HF ? hfAt(x, z) : 0) + 1); if (hitAny(x, z, 0.35, y + 0.05)) continue; makeZombie(x, z, Math.random() < 0.25 ? 'runner' : undefined, y); made++; } }
@@ -5183,12 +5206,12 @@ function bldStart(){
   if (!BLD.on || BLD.act || P.climb || panel) return;
   if (!BLD.spot) return;
   if (!BLD.ok){ log(BLD.why || 'Não dá para construir aqui.', '#ffd27a'); toneSnd(220, 180, 0.12, 0.05, 'square'); return; }
-  BLD.act = {kind:'b', t:0, dur:BP[BLD.spot.k].dur, s:Object.assign({}, BLD.spot), x0:P.x, z0:P.z, nT:0};
+  BLD.act = {kind:'b', t:0, dur:CFG.buildFree ? 0 : BP[BLD.spot.k].dur, s:Object.assign({}, BLD.spot), x0:P.x, z0:P.z, nT:0};
 }
 function bldDismantle(){
   if (!BLD.on || BLD.act || panel) return;
   const b = bldAimed(2.8); if (!b){ log('Mire numa peça construída para desmontar.', '#ffd27a'); return; }
-  BLD.act = {kind:'d', t:0, dur:1.6, b, x0:P.x, z0:P.z, nT:0};
+  BLD.act = {kind:'d', t:0, dur:CFG.buildFree ? 0 : 1.6, b, x0:P.x, z0:P.z, nT:0};
 }
 // conserto com o martelo: +35% da resistência por vez, gasta 1 tábua e 2 pregos
 function bldFixFalta(){
@@ -5201,7 +5224,7 @@ function bldFixStart(b){
   if (BLD.act || panel || P.climb) return;
   if (b.hp >= b.mx - 1){ log('Essa peça está inteira.', '#9fe09a'); return; }
   const why = bldFixFalta(); if (why){ log(why, '#ffd27a'); return; }
-  BLD.act = {kind:'f', t:0, dur:1.5, b, x0:P.x, z0:P.z, nT:0};
+  BLD.act = {kind:'f', t:0, dur:CFG.buildFree ? 0 : 1.5, b, x0:P.x, z0:P.z, nT:0};
 }
 function bldHammer(){ sfx('door_hit', 0.28, undefined, undefined, R(1.5, 1.8)) || (toneSnd(R(700, 900), 300, 0.05, 0.08, 'square'), noiseSnd(0.05, 0.12, 1800)); swingT = 1; emitNoise(P.x, P.z, 13); }
 function bldActUpdate(dt){
@@ -5211,8 +5234,8 @@ function bldActUpdate(dt){
   if (Math.hypot(P.x - a.x0, P.z - a.z0) > 0.8 || P.dead || P.car || (a.b && BUILT.indexOf(a.b) < 0)){ stop(a.kind === 'f' ? 'Conserto interrompido.' : 'Construção interrompida.'); return; }
   if (panel) return;
   a.t += dt; a.nT -= dt; if (a.nT <= 0){ a.nT = 0.36; bldHammer(); if (a.b) a.b.wob = 0.12; }
-  box.style.display = 'block'; lbl.textContent = a.kind === 'b' ? 'Construindo: ' + bldName(a.s.k, a.s.ax) + '...' : a.kind === 'f' ? 'Consertando: ' + bldName(a.b.k, a.b.ax) + '...' : 'Desmontando: ' + bldName(a.b.k, a.b.ax) + '...';
-  $('#actB').style.width = Math.min(100, a.t / a.dur * 100) + '%';
+  if (a.dur > 0) box.style.display = 'block'; lbl.textContent = a.kind === 'b' ? 'Construindo: ' + bldName(a.s.k, a.s.ax) + '...' : a.kind === 'f' ? 'Consertando: ' + bldName(a.b.k, a.b.ax) + '...' : 'Desmontando: ' + bldName(a.b.k, a.b.ax) + '...';
+  $('#actB').style.width = (a.dur > 0 ? Math.min(100, a.t / a.dur * 100) : 100) + '%';
   if (a.t < a.dur) return;
   stop();
   if (a.kind === 'b'){
@@ -5616,7 +5639,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.05-17';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.05-19';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
