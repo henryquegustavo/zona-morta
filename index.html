@@ -35,7 +35,8 @@ canvas{display:block}
 #netHud small{color:#b8b0a0}
 body.tch #log{font-size:11px;max-width:46vw;max-height:3em;overflow:hidden;left:50%;transform:translateX(-50%);top:66px;bottom:auto;text-align:center;line-height:1.3;pointer-events:none}
 body.tch #log div{margin:1px auto 0;display:table;background:rgba(0,0,0,.4);border-radius:4px;padding:0 6px}
-body.tch #locB{display:none}
+body.tch #locB{display:none}body.tch #moods{display:none!important}
+.chip.mdc{background:rgba(0,0,0,.5);border-left:3px solid #e8d050;padding:0 4px;font-size:12px}.chip.mdc.l2{border-color:#e89030}.chip.mdc.l3{border-color:#e04030}.chip.mdc.l4{border-color:#b00000;background:rgba(90,0,0,.6)}.chip.mdc.g{border-color:#5ab0e0}
 body.tch #prompt{top:auto;bottom:4px;font-size:11.5px;padding:3px 9px;max-width:52vw;text-align:center;white-space:normal}
 body.tch #act{top:auto;bottom:30px;width:150px;font-size:11px;padding:3px 8px}
 #carT{display:none}body.driving #carT{display:block}
@@ -234,7 +235,7 @@ const CFG_DEF = {crossStyle:'circulo', crossColor:'#ffffff', crossSize:1, crossT
   sens:1, invertY:false, aimToggle:false, touchSens:1, autoReload:true,
   view:3, fov:72, camDist:3.1, shoulder:'direito', headBob:true, shake:true,
   quality:'auto', viewDist:1, rainOn:true, blood:true, showMini:true, showMoods:true, showHot:true, hudScale:1,
-  volMaster:0.8, volFx:1, volAmb:1, heartbeat:true, realSfx:true,
+  volMaster:0.8, volFx:1, volAmb:1, heartbeat:true, realSfx:true, fearFx:true,
   zSpeed:1, zPop:1.5, zDmg:1, surround:true, dayLen:1, hordesOn:true, miniRotate:true, miniZoom:1,
   diff:'normal', startH:8, nightLock:false, dayLock:false, ffire:false, fogNight:1, rainMode:'auto', animals:1, hordeN:8, hordeSz:1, buildFree:false, msgs:'auto', zCap:0, giants:2, hordeAggro:'noite', nightHorde:1};
 let CFG = Object.assign({}, CFG_DEF);
@@ -247,7 +248,7 @@ const CFG_UI = [
     ['crossDynamic', 'Mira dinâmica (abre ao andar e ao atirar)', 'chk'], ['crossOutline', 'Contorno escuro', 'chk'], ['hitMarker', 'Marcador de acerto (X vermelho)', 'chk']]],
   ['Controles', [['sens', 'Sensibilidade do mouse', 'range', 0.2, 3, 0.05], ['invertY', 'Inverter eixo vertical', 'chk'], ['aimToggle', 'Mirar com um clique (em vez de segurar)', 'chk'], ['touchSens', 'Sensibilidade do toque', 'range', 0.3, 3, 0.05], ['autoReload', 'Recarregar automaticamente', 'chk']]],
   ['Câmera', [['view', 'Câmera', 'sel', [[3, 'Terceira pessoa'], [1, 'Primeira pessoa']]], ['fov', 'Campo de visão', 'range', 55, 100, 1], ['camDist', 'Distância da câmera', 'range', 1.6, 5, 0.1], ['shoulder', 'Ombro da câmera', 'sel', [['direito', 'Direito'], ['esquerdo', 'Esquerdo']]], ['headBob', 'Balanço ao andar', 'chk'], ['shake', 'Tremor da tela', 'chk']]],
-  ['Gráficos', [['quality', 'Qualidade', 'sel', [['auto', 'Automática'], ['baixa', 'Baixa (mais rápido)'], ['media', 'Média'], ['alta', 'Alta']]], ['viewDist', 'Distância de visão', 'range', 0.5, 1.6, 0.05], ['rainOn', 'Efeito de chuva', 'chk'], ['blood', 'Sangue', 'chk'], ['showMini', 'Minimapa', 'chk'], ['miniRotate', 'Minimapa gira com o personagem', 'chk'], ['miniZoom', 'Zoom do minimapa', 'range', 0.5, 2.5, 0.1], ['showMoods', 'Indicadores de estado', 'chk'], ['showHot', 'Barra de armas', 'chk'], ['hudScale', 'Tamanho da interface', 'range', 0.7, 1.4, 0.05], ['msgs', 'Mensagens na tela', 'sel', [['auto', 'Automático (no celular só os avisos)'], ['todas', 'Todas'], ['importantes', 'Só avisos importantes'], ['nenhuma', 'Nenhuma']]]]],
+  ['Gráficos', [['quality', 'Qualidade', 'sel', [['auto', 'Automática'], ['baixa', 'Baixa (mais rápido)'], ['media', 'Média'], ['alta', 'Alta']]], ['viewDist', 'Distância de visão', 'range', 0.5, 1.6, 0.05], ['rainOn', 'Efeito de chuva', 'chk'], ['blood', 'Sangue', 'chk'], ['showMini', 'Minimapa', 'chk'], ['miniRotate', 'Minimapa gira com o personagem', 'chk'], ['miniZoom', 'Zoom do minimapa', 'range', 0.5, 2.5, 0.1], ['showMoods', 'Indicadores de estado', 'chk'], ['showHot', 'Barra de armas', 'chk'], ['fearFx', 'Bordas vermelhas quando está com medo', 'chk'], ['hudScale', 'Tamanho da interface', 'range', 0.7, 1.4, 0.05], ['msgs', 'Mensagens na tela', 'sel', [['auto', 'Automático (no celular só os avisos)'], ['todas', 'Todas'], ['importantes', 'Só avisos importantes'], ['nenhuma', 'Nenhuma']]]]],
   ['Áudio', [['volMaster', 'Volume geral', 'range', 0, 1, 0.05], ['volFx', 'Efeitos', 'range', 0, 1, 0.05], ['volAmb', 'Ambiente (vento e chuva)', 'range', 0, 1, 0.05], ['heartbeat', 'Batimentos cardíacos', 'chk'], ['realSfx', 'Sons gravados (tiros, zumbis, portas, carro)', 'chk']]],
   ['Mundo / Sala', [['diff', 'Dificuldade', 'sel', [['facil', 'Fácil'], ['normal', 'Normal'], ['dificil', 'Difícil'], ['pesadelo', 'Pesadelo'], ['custom', 'Personalizada']]],
     ['zPop', 'Quantidade de zumbis', 'range', 0.3, 6, 0.05], ['zSpeed', 'Velocidade dos zumbis', 'range', 0.5, 1.6, 0.05], ['zDmg', 'Dano dos zumbis', 'range', 0.3, 2.5, 0.05], ['surround', 'Morrer quando cercado (4+ zumbis)', 'chk'], ['hordesOn', 'Hordas', 'chk'], ['hordeN', 'Número de hordas', 'sel', Array.from({length:20}, (_, i) => i + 1).map(n => [n, n + (n === 1 ? ' horda' : ' hordas')])], ['hordeSz', 'Tamanho das hordas', 'sel', [[0.3, 'Bem pequenas (0,3×)'], [0.5, 'Pequenas (0,5×)'], [0.75, 'Menores (0,75×)'], [1, 'Normal (1×)'], [1.5, 'Grandes (1,5×)'], [2, 'Enormes (2×)'], [3, 'Gigantes (3×)'], [4, 'Colossais (4×)'], [5, 'Monstruosas (5×)']]],
@@ -2871,20 +2872,21 @@ function updateZombies(dtF){
       if (T.agach) sight *= still ? 0.32 : 0.45; else if (still) sight *= 0.8;
       if (inForest(T.x)) sight *= 0.75;
       if (T.car) sight = Math.max(sight, night ? 16 : 22);
-      const chasing = z.state === 'chase', dy = Math.abs(T.y - z.y), smell = T.agach ? 1.2 : 2.2;
+      const chasing = z.state === 'chase', dy = Math.abs(T.y - z.y), smell = dy < 1.6 ? (T.agach ? 1.2 : 2.2) : 0, upIn = dy > 1.6 && !!insideBld(T.x, T.z, T.y);
+      if (upIn) sight *= 0.6;   // você em outro andar, dentro de casa: só vê pela janela e de frente
       let seen = false;
       if (dp < sight * (chasing ? 1.35 : 1) && dy < 9){
         const fx = Math.sin(z.g.rotation.y), fz = Math.cos(z.g.rotation.y), dot = (dxp * fx + dzp * fz) / dp;
         // cone: de frente (~60°) vê no alcance todo; de canto vê só bem perto; de costas só pelo "faro"
-        const inCone = chasing || dot > 0.5 || (dot > 0.05 && dp < sight * 0.4) || dp < smell;
-        const ey = z.y + ((z.crawl || z.down > 0) ? 0.45 : 1.55);
+        const inCone = (chasing && !upIn) || dot > 0.5 || (!upIn && dot > 0.05 && dp < sight * 0.4) || dp < smell;
+        const ey = z.y + ((z.crawl || z.down > 0) ? 0.45 : 1.55) * (z.gs || 1);
         if (inCone && (losLine(z.x, ey, z.z, T.x, T.y + T.eye - 0.12, T.z) || losLine(z.x, ey, z.z, T.x, T.y + (T.agach ? 0.55 : 1.05), T.z))) seen = true;
       }
       // quem já te persegue sabe que você subiu: fica embaixo gemendo e tentando subir (agachado e parado você some)
-      if (!seen && chasing && T.y - z.y > 1.3 && dp < 11 && !(T.agach && still)) seen = true;
+      if (!seen && chasing && T.y - z.y > 1.3 && dp < 11 && !(T.agach && still) && z.lost < 3 && !upIn) seen = true;
       if (seen && !chasing){
         // tempo para perceber: perto é na hora, longe demora (agachado demora mais)
-        const need = (dp < smell ? 0.05 : 0.25 + 1.6 * (dp / sight) ** 2) * (T.agach ? 1.6 : 1);
+        const need = (dp < smell ? 0.05 : 0.25 + 1.6 * (dp / sight) ** 2) * (T.agach ? 1.6 : 1) * (z.giant ? 1.8 : 1) * (upIn ? 1.5 : 1);
         z.aw = (z.aw || 0) + tI / need;
         if (z.aw < 1){ if (z.aw > 0.45){ z.state = 'investigate'; z.tx = T.x + R(-1, 1); z.tz = T.z + R(-1, 1); z.lost = 0; } }
       } else if (!seen) z.aw = Math.max(0, (z.aw || 0) - tI * 0.5);
@@ -3560,7 +3562,9 @@ function updateHUD(){
   if (seen) ch.push(['r', 'Te viram (' + seen + ')']); if (srch) ch.push(['y', 'Procurando você (' + srch + ')']); if (srch && !seen) ch.push(['g', 'Escondido']);
   const hb = inHouse(P.x, P.z), hz = hb && P.y < ceilOf(hb) - 0.3 ? hb : null; if (hb && !hz) ch.push(['b', 'No telhado']); else if (hz && P.y - hz.levels[0] > 1.5) ch.push(['b', (Math.round((P.y - hz.levels[0]) / hz.fh)) + 'º andar']); if (hz) ch.push(['g', 'Dentro: ' + ({casa:'casa', cabana:'cabana', predio:'edifício', shopping:'shopping', igreja:'igreja', caverna:'caverna', celeiro:'celeiro', fazenda:'casa da fazenda', mansao:'mansão'}[hz.kind] || (SHOP[hz.kind] ? SHOP[hz.kind].nome.toLowerCase() : 'construção'))]);
   else if (inForest(P.x)) ch.push(['g', 'Floresta']);
-  $('#chips').innerHTML = ch.map(c => `<span class="chip ${c[0]}">${c[1]}</span>`).join('');
+  $('#chips').innerHTML = ch.map(c => `<span class="chip ${c[0]}">${c[1]}</span>`).join('')
+    // no celular os indicadores ficam aqui dentro, só o ícone (o grave e o CERCADO com o nome)
+    + (isTouch && CFG.showMoods ? md.map(([i, t, l]) => `<span class="chip mdc ${l ? 'l' + l : 'g'}" title="${t}">${i}${l >= 4 ? ' ' + t : ''}</span>`).join('') : '');
   const w = weapon(); $('#wN').textContent = w.nome + (P.equip && P.equip.sil ? ' + silenciador' : '');
   $('#wX').textContent = w.fogo ? (P.reload > 0 ? 'RECARREGANDO...' : 'Pente ' + P.equip.mag + '/' + w.cap + '  ·  reserva ' + (P.ammo[w.mun] || 0))
     : (P.equip && P.equip.dur !== undefined ? 'Condição: ' + Math.round(P.equip.dur / w.dur * 100) + '%' : 'Abatidos: ' + P.kills);
@@ -4139,7 +4143,7 @@ function updateFear(dt){
   const f = Math.max(nd < 16 ? 1 - nd / 16 : 0, P.panic / 130);
   beatT -= dt;
   if (f > 0.05 && beatT <= 0 && CFG.heartbeat){ beatT = 1.1 - f * 0.65; toneSnd(70, 45, 0.12, 0.10 + f * 0.12, 'sine'); setTimeout(() => toneSnd(62, 40, 0.12, 0.08 + f * 0.1, 'sine'), 170); }
-  $('#fear').style.opacity = (f * 0.75 + (f > 0 ? Math.max(0, Math.sin(beatT * 8)) * 0.12 * f : 0)).toFixed(2);
+  $('#fear').style.opacity = !CFG.fearFx ? '0' : (f * 0.75 + (f > 0 ? Math.max(0, Math.sin(beatT * 8)) * 0.12 * f : 0)).toFixed(2);
 }
 // ---- chuva e ambiente ----
 let rainK = 0, rainT = 20, rainOn = false, rainPts = null, rainGain = null, windGain = null;
@@ -6227,6 +6231,9 @@ function pileAnchor(T, z){
     // céu aberto ou só um obstáculo baixo (cerca, varanda, carro): segue andando
     if (g < z.y + 1.2 || g < T.y - 0.7){ open = true; bx = x; bz = zz; gy = Math.min(fl, z.y + 0.3); continue; }
     if (!open) continue;
+    // em cima da borda tem de ter espaço aberto (telhado, laje, muro): parede de andar fechado não deixa passar
+    const ix = x + dx * 0.55, iz = zz + dz * 0.55;
+    if (!losLine(bx, g + 0.6, bz, ix, g + 0.6, iz) || !losLine(bx, g + 1.3, bz, ix, g + 1.3, iz) || hitAny(ix, iz, 0.2, g + 0.05)) return null;
     return {bx:bx - dx * 0.15, bz:bz - dz * 0.15, gy0:gy, ex:x, ez:zz, ey:g, nx:-dx, nz:-dz, h:g - gy};
   }
   return null;
@@ -6235,7 +6242,8 @@ function pileJoin(z, T){
   if (z.pile || z.climbO) return;
   if ((z.pjT = (z.pjT || 0) - 1 / 30) > 0) return;   // pensa nisso só de vez em quando (economiza CPU)
   z.pjT = R(0.3, 0.5); z.pgoal = null;
-  if (z.crawl || z.down > 0 || z.big && Math.random() < 0.5) return;
+  if (z.crawl || z.down > 0 || z.giant || z.big && Math.random() < 0.5) return;
+  if (insideBld(T.x, T.z, T.y)) return;   // você dentro de casa no andar de cima: eles entram pela porta e sobem a escada
   // prefere uma pilha que já existe (a multidão converge para o mesmo ponto)
   let p = null, bd = 9;
   for (const q of PILES) if (q.T === T && q.m.length < PILE_MAX){ const d = Math.hypot(q.bx - z.x, q.bz - z.z); if (d < bd && (d < 2.5 || losLine(z.x, z.y + 0.6, z.z, q.bx - q.nx * 0.3, q.gy0 + 0.6, q.bz - q.nz * 0.3))){ bd = d; p = q; } }
@@ -6279,25 +6287,27 @@ function updatePiles(dt){
 function pileStep(z, T, dt){
   z.anim += dt * 8;
   if (z.climbO){   // se puxando por cima da borda
-    const c = z.climbO; c.t += dt; const k = Math.min(1, c.t / c.d), e = k * k * (3 - 2 * k);
-    z.x = c.x0 + (c.x1 - c.x0) * e; z.z = c.z0 + (c.z1 - c.z0) * e; z.y = c.y0 + (c.y1 - c.y0) * Math.min(1, k * 1.6) + Math.sin(k * Math.PI) * 0.35;
+    // 1º agarra a borda e se puxa para cima (sobe sem avançar), 2º rola por cima da borda e levanta
+    const c = z.climbO; c.t += dt; const k = Math.min(1, c.t / c.d), ka = Math.min(1, k / 0.5), kb = Math.max(0, (k - 0.5) / 0.5), ea = ka * ka * (3 - 2 * ka), eb = kb * kb * (3 - 2 * kb);
+    z.x = c.x0 + (c.x1 - c.x0) * (0.15 * ea + 0.85 * eb); z.z = c.z0 + (c.z1 - c.z0) * (0.15 * ea + 0.85 * eb); z.y = c.y0 + (c.y1 - c.y0) * ea + Math.sin(kb * Math.PI) * 0.12;
     if (k >= 1){ z.climbO = null; z.y = c.y1; z.state = 'chase'; z.tx = T.x; z.tz = T.z; z.lost = 0; }
     return 0.5;
   }
   const p = z.pile, i = p.m.indexOf(z); if (i < 0){ z.pile = null; return 0; }
   z.state = 'chase'; z.lost = 0; z.aw = 1; z.tx = p.T.x; z.tz = p.T.z;
   const [L, k, n] = pileSlot(i), tx = -p.nz, tz = p.nx, lat = (k - (n - 1) / 2) * 0.55 + Math.sin(z.anim * 0.7 + i) * 0.05;
-  const out = Math.max(0.28, 0.5 - L * 0.04), sx = p.bx + tx * lat - p.nx * (0.4 - out), sz = p.bz + tz * lat - p.nz * (0.4 - out), need = Math.max(0, p.h - PILE_REACH - Math.min(0.7, p.t * 0.03)), sy = p.gy0 + Math.min(L * PILE_LH, need + 0.05);
+  const out = Math.max(0.3, 0.95 - Math.min(L, 6) * 0.11), sx = p.bx + tx * lat - p.nx * (0.4 - out), sz = p.bz + tz * lat - p.nz * (0.4 - out), need = Math.max(0, p.h - PILE_REACH - Math.min(0.7, p.t * 0.03)), sy = p.gy0 + Math.min(L * PILE_LH, need + 0.05);
   const dx = sx - z.x, dz = sz - z.z, dh = Math.hypot(dx, dz), sp = 2.6 * dt;
   if (dh > sp){ z.x += dx / dh * sp; z.z += dz / dh * sp; } else { z.x = sx; z.z = sz; }
   // sobe por cima dos outros aos trancos ("igual loucos")
   const up = (dh < 0.6 ? 1.1 : 0.2) * dt * (0.6 + Math.abs(Math.sin(z.anim * 1.7 + i)) * 0.9);
   if (z.y < sy) z.y = Math.min(sy, z.y + up); else z.y = Math.max(sy, z.y - dt * 2);
+  z.pL = L; z.pUp = z.y < sy - 0.04 || dh > 0.15; z.pTop = i === p.m.length - 1;
   z.g.rotation.y = lerpAng(z.g.rotation.y, Math.atan2(-p.nx, -p.nz), dt * 8);
   // o de cima alcançou a borda? escala e sai da pilha (precisa de pelo menos 3 zumbis amontoados)
   if (p.m.length >= 3 && L * PILE_LH >= need - 0.01 && Math.abs(z.y - sy) < 0.05 && p.t > 1.2){
     const ix = p.ex - p.nx * 0.55, iz = p.ez - p.nz * 0.55, iy = groundAt(ix, iz, 0.2, p.ey + 0.6);
-    p.m.splice(i, 1); z.pile = null; z.climbO = {t:0, d:0.85, x0:z.x, y0:z.y, z0:z.z, x1:ix, y1:iy, z1:iz};
+    p.m.splice(i, 1); z.pile = null; z.climbO = {t:0, d:1.3, x0:z.x, y0:z.y, z0:z.z, x1:ix, y1:iy, z1:iz};
     sfx('zgroan', 0.55, z.x, z.z, R(1.2, 1.45)); p.t = 0.6;
   }
   return 0.6;
@@ -6305,10 +6315,29 @@ function pileStep(z, T, dt){
 // pose de quem está amontoado / escalando: braços para cima arranhando, pernas se debatendo
 function pilePose(z){
   const a = z.anim, s = Math.sin(a * 5.5), c = Math.cos(a * 6.1);
-  z.aL.rotation.x = -2.75 + Math.sin(a * 7.3) * 0.55; z.aR.rotation.x = -2.75 + Math.cos(a * 6.7) * 0.55;
-  z.lL.rotation.x = -0.7 + s * 0.6; z.lR.rotation.x = -0.7 - s * 0.6; z.kL.rotation.x = 1.0 + c * 0.4; z.kR.rotation.x = 1.0 - c * 0.4;
-  z.head.rotation.x = -0.55 + Math.sin(a * 3) * 0.15; z.head.rotation.z = Math.sin(a * 4.3) * 0.25;
-  z.g.rotation.z = Math.sin(a * 9) * 0.1; return 0.32;   // inclinação para a parede
+  z.head.rotation.z = Math.sin(a * 4.3) * 0.2;
+  if (z.climbO){
+    // na borda: braços agarrados lá em cima puxando, pernas chutando o ar; depois deita por cima da borda e levanta
+    const o = z.climbO, k = Math.min(1, o.t / o.d), ka = Math.min(1, k / 0.5), kb = Math.max(0, (k - 0.5) / 0.5), pull = Math.sin(a * 9) * 0.2;
+    z.aL.rotation.x = -2.9 + ka * 1.3 + kb * 1.6 + pull; z.aR.rotation.x = -2.9 + ka * 1.3 + kb * 1.6 - pull;
+    z.lL.rotation.x = -0.3 + Math.sin(a * 11) * 0.7 * (1 - kb); z.lR.rotation.x = -0.3 - Math.sin(a * 11) * 0.7 * (1 - kb); z.kL.rotation.x = 0.9 * (1 - kb) + 0.2; z.kR.rotation.x = 0.7 * (1 - kb) + 0.2;
+    z.head.rotation.x = -0.7 + kb * 0.5; z.g.rotation.z = Math.sin(a * 7) * 0.08 * (1 - kb);
+    return 0.15 + ka * 0.45 + Math.sin(kb * Math.PI) * 0.75 - kb * 0.6;
+  }
+  const L = z.pL || 0;
+  if (z.pUp || z.pTop){
+    // subindo: uma mão por cima da outra, joelho empurrando nas costas de quem está embaixo
+    const h = Math.sin(a * 6.5);
+    z.aL.rotation.x = -2.6 + h * 0.75; z.aR.rotation.x = -2.6 - h * 0.75;
+    z.lL.rotation.x = -0.9 + Math.max(0, h) * 1.0; z.lR.rotation.x = -0.9 + Math.max(0, -h) * 1.0; z.kL.rotation.x = 1.3 - Math.max(0, h) * 0.6; z.kR.rotation.x = 1.3 - Math.max(0, -h) * 0.6;
+    z.head.rotation.x = -0.75 + Math.sin(a * 3) * 0.12; z.g.rotation.z = h * 0.12;
+    return 0.42 + Math.abs(h) * 0.08;
+  }
+  // amontoado embaixo: deitado na pilha, braços esticados para cima arranhando, pernas se debatendo devagar
+  z.aL.rotation.x = -2.4 + Math.sin(a * 4.1 + L) * 0.45; z.aR.rotation.x = -2.4 + Math.cos(a * 3.7 + L) * 0.45;
+  z.lL.rotation.x = -0.35 + s * 0.35; z.lR.rotation.x = -0.35 - s * 0.35; z.kL.rotation.x = 0.7 + c * 0.3; z.kR.rotation.x = 0.7 - c * 0.3;
+  z.head.rotation.x = -0.8 + Math.sin(a * 2.3) * 0.12; z.g.rotation.z = Math.sin(a * 2.7 + L) * 0.07;
+  return Math.max(0.42, 0.68 - L * 0.04);   // os de baixo mais deitados, encostados na pilha
 }
 
 // ================= HUD DO CELULAR: padrão + personalizável =================
@@ -6467,7 +6496,7 @@ const SUPA = {ws:'wss://vngcfbqpldxwvrcvbpsy.supabase.co/realtime/v1/websocket',
 const NET = {on:false, ready:false, role:null, code:'', id:'', name:'', hostId:null, seed:0, tr:null, conn:'off', peers:new Map(),
   applying:false, killer:null, sendT:0, entT:0, contT:0, sh:0, sw:0, noise:null, hits:[], sevs:[], svs:[], deaths:[], zmap:new Map(), rz:new Map(), dead:new Set(),
   entSig:null, entChanged:new Map(), contSig:new Map(), contChanged:new Map(), baseC:0, nid:0, hiT:0, waitT:0, lastHost:0};
-const GAME_VER = '2026.11.09-30';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
+const GAME_VER = '2026.11.09-31';   // mudou o jogo, muda aqui: todos da sala precisam estar na mesma versão
 const NET_RATE = 1 / 7;            // estados por segundo de cada jogador
 const NET_ZR = 85;                 // raio em volta de cada amigo em que o anfitrião manda os zumbis
 const rid = n => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < n; i++) s += A[Math.floor(RNDT() * A.length)]; return s; };
